@@ -10,6 +10,7 @@ from app.models.snack import Snack
 from app.models.weekly_notes import WeeklyNotes
 from app.routes import meals, snacks, plates, hunger, weekly, media
 from app.utils.exceptions import ValidationError, NotFoundError, FileUploadError, DuplicateError
+from app.routes import meals, snacks, plates, hunger, weekly, media, recommendations, compliance
 
 Base.metadata.create_all(bind=engine)
 
@@ -74,6 +75,8 @@ app.include_router(plates.router)
 app.include_router(hunger.router)
 app.include_router(weekly.router)
 app.include_router(media.router)
+app.include_router(recommendations.router)
+app.include_router(compliance.router)
 
 @app.get("/")
 def read_root():

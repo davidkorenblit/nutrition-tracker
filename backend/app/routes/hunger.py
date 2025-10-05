@@ -1,9 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
+from app.models.hunger_log import HungerLog
+from app.models.meal import Meal
+from app.models.user import User
 from app.schemas.hunger_log import HungerLogCreate, HungerLogResponse
 from app.services.hunger_service import create_hunger_log
-from app.models.hunger_log import HungerLog
+from app.utils.dependencies import get_current_user
 from typing import List
 
 router = APIRouter(
@@ -12,18 +15,23 @@ router = APIRouter(
 )
 
 @router.post("/", response_model=HungerLogResponse)
-def create_log(log_data: HungerLogCreate, db: Session = Depends(get_db)):
-    """
-    יצירת רישום רעב חדש.
+def create_log(
+    log_data: HungerLogCreate, 
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # וודא שהארוחה שייכת למשתמש
+    meal = db.query(Meal).filter(
+        Meal.id == log_data.meal_id,
+        Meal.user_id == current_user.id
+    ).first()
     
-    Body:
-        - meal_id: ID של הארוחה
-        - log_type: "before" / "during" / "after"
-        - hunger_level: רמת רעב (1-10)
+    if not meal:
+        raise HTTPException(
+            status_code=404,
+            detail="Meal not found"
+        )
     
-    Returns:
-        רישום הרעב שנוצר
-    """
     hunger_log = create_hunger_log(
         meal_id=log_data.meal_id,
         log_type=log_data.log_type,
@@ -35,17 +43,23 @@ def create_log(log_data: HungerLogCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/{meal_id}", response_model=List[HungerLogResponse])
-def get_hunger_logs_by_meal(meal_id: int, db: Session = Depends(get_db)):
-    """
-    קבלת כל רישומי הרעב של ארוחה מסוימת.
-    בדרך כלל תחזיר 3 רישומים: before, during, after.
+def get_hunger_logs_by_meal(
+    meal_id: int, 
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # וודא שהארוחה שייכת למשתמש
+    meal = db.query(Meal).filter(
+        Meal.id == meal_id,
+        Meal.user_id == current_user.id
+    ).first()
     
-    Path Parameter:
-        - meal_id: ID של הארוחה
+    if not meal:
+        raise HTTPException(
+            status_code=404,
+            detail="Meal not found"
+        )
     
-    Returns:
-        רשימת רישומי רעב
-    """
     logs = db.query(HungerLog).filter(HungerLog.meal_id == meal_id).all()
     
     if not logs:

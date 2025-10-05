@@ -3,13 +3,14 @@ from app.models.meal import Meal
 from app.services.plate_service import create_healthy_plate
 from datetime import datetime
 
-def ensure_daily_meals(date: str, db: Session):
+def ensure_daily_meals(date: str, user_id: int, db: Session):
     """
     וודא שקיימות 3 ארוחות עבור תאריך מסוים.
     אם לא - צור אותן אוטומטית + צלחת בריאה לכל אחת.
     
     Args:
         date: תאריך (YYYY-MM-DD)
+        user_id: ID של המשתמש
         db: database session
     
     Returns:
@@ -21,13 +22,15 @@ def ensure_daily_meals(date: str, db: Session):
         # בדוק אם הארוחה כבר קיימת
         existing_meal = db.query(Meal).filter(
             Meal.date == date,
-            Meal.meal_type == meal_type
+            Meal.meal_type == meal_type,
+            Meal.user_id == user_id
         ).first()
         
         # אם לא קיימת - צור אותה + HP
         if not existing_meal:
             # 1. צור ארוחה
             new_meal = Meal(
+                user_id=user_id,
                 meal_type=meal_type,
                 date=date
             )

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.nutritionist_recommendations import NutritionistRecommendations
+from app.models.user import User
 from app.schemas.recommendation import (
     RecommendationUpload,
     RecommendationResponse,
@@ -14,6 +15,7 @@ from app.services.file_service import (
     parse_recommendations_to_list,
     delete_word_file
 )
+from app.utils.dependencies import get_current_user
 from typing import List
 
 router = APIRouter(
@@ -26,18 +28,9 @@ router = APIRouter(
 async def upload_word_file(
     visit_date: str,
     file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    העלאת קובץ Word עם המלצות תזונאיות.
-    
-    Form Data:
-        - visit_date: תאריך הביקור (YYYY-MM-DD)
-        - file: קובץ Word (.docx)
-    
-    Returns:
-        ההמלצות שנוצרו
-    """
     # 1. שמור את הקובץ
     file_path = await save_word_file(file)
     
@@ -52,6 +45,7 @@ async def upload_word_file(
     
     # 5. שמור ב-DB
     db_recommendation = NutritionistRecommendations(
+        user_id=current_user.id,
         visit_date=visit_date,
         file_path=file_path,
         raw_text=raw_text,
@@ -66,29 +60,24 @@ async def upload_word_file(
 
 
 @router.get("/", response_model=List[RecommendationResponse])
-def get_all_recommendations(db: Session = Depends(get_db)):
-    """
-    קבלת כל ההמלצות.
-    
-    Returns:
-        רשימת כל ההמלצות
-    """
-    return db.query(NutritionistRecommendations).all()
+def get_all_recommendations(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    return db.query(NutritionistRecommendations).filter(
+        NutritionistRecommendations.user_id == current_user.id
+    ).all()
 
 
 @router.get("/{recommendation_id}", response_model=RecommendationResponse)
-def get_recommendation(recommendation_id: int, db: Session = Depends(get_db)):
-    """
-    קבלת המלצות ספציפיות לפי ID.
-    
-    Path Parameter:
-        - recommendation_id: ID של ההמלצות
-    
-    Returns:
-        ההמלצות
-    """
+def get_recommendation(
+    recommendation_id: int, 
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     rec = db.query(NutritionistRecommendations).filter(
-        NutritionistRecommendations.id == recommendation_id
+        NutritionistRecommendations.id == recommendation_id,
+        NutritionistRecommendations.user_id == current_user.id
     ).first()
     
     if not rec:
@@ -104,26 +93,12 @@ def get_recommendation(recommendation_id: int, db: Session = Depends(get_db)):
 def tag_recommendation(
     recommendation_id: int,
     tag_data: RecommendationTagUpdate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    תיוג ידני של המלצה ספציפית.
-    
-    Path Parameter:
-        - recommendation_id: ID של ההמלצות
-    
-    Body:
-        - recommendation_item_id: ID של ההמלצה בתוך הרשימה
-        - category: קטגוריה (new_food/quantity/habit/general)
-        - tracked: האם לעקוב?
-        - target_value: ערך יעד (אופציונלי)
-        - notes: הערות (אופציונלי)
-    
-    Returns:
-        ההמלצות המעודכנות
-    """
     rec = db.query(NutritionistRecommendations).filter(
-        NutritionistRecommendations.id == recommendation_id
+        NutritionistRecommendations.id == recommendation_id,
+        NutritionistRecommendations.user_id == current_user.id
     ).first()
     
     if not rec:
@@ -159,18 +134,14 @@ def tag_recommendation(
 
 
 @router.delete("/{recommendation_id}")
-def delete_recommendation(recommendation_id: int, db: Session = Depends(get_db)):
-    """
-    מחיקת המלצות.
-    
-    Path Parameter:
-        - recommendation_id: ID של ההמלצות
-    
-    Returns:
-        הודעת הצלחה
-    """
+def delete_recommendation(
+    recommendation_id: int, 
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     rec = db.query(NutritionistRecommendations).filter(
-        NutritionistRecommendations.id == recommendation_id
+        NutritionistRecommendations.id == recommendation_id,
+        NutritionistRecommendations.user_id == current_user.id
     ).first()
     
     if not rec:

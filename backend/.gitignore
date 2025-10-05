@@ -1,0 +1,25 @@
+# Environment variables (CRITICAL - NEVER COMMIT!)
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+nutrition_tracker.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

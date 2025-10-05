@@ -2,12 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.compliance import Compliance
+from app.models.nutritionist_recommendations import NutritionistRecommendations
+from app.models.user import User
 from app.schemas.compliance import (
     ComplianceCreate,
     ComplianceResponse,
     ComplianceReport
 )
 from app.services.compliance_service import generate_compliance_report
+from app.utils.dependencies import get_current_user
 from typing import List
 
 router = APIRouter(
@@ -19,22 +22,21 @@ router = APIRouter(
 @router.post("/", response_model=ComplianceResponse)
 def create_compliance(
     compliance_data: ComplianceCreate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    דיווח על עמידה בהמלצה.
+    # וודא שההמלצות שייכות למשתמש
+    rec = db.query(NutritionistRecommendations).filter(
+        NutritionistRecommendations.id == compliance_data.recommendation_id,
+        NutritionistRecommendations.user_id == current_user.id
+    ).first()
     
-    Body:
-        - recommendation_id: ID של המלצות הביקור
-        - recommendation_item_id: ID של ההמלצה הספציפית
-        - visit_period: תקופת הביקור (למשל: "2025-10-30 to 2025-11-13")
-        - status: סטטוס (not_started/in_progress/completed/abandoned)
-        - completion_rate: אחוז ביצוע (0-100)
-        - notes: הערות (אופציונלי)
+    if not rec:
+        raise HTTPException(
+            status_code=404,
+            detail="Recommendations not found"
+        )
     
-    Returns:
-        דיווח העמידה שנוצר
-    """
     # בדוק אם כבר קיים דיווח לאותה המלצה באותה תקופה
     existing = db.query(Compliance).filter(
         Compliance.recommendation_id == compliance_data.recommendation_id,
@@ -68,18 +70,21 @@ def create_compliance(
 def get_compliance_report(
     recommendation_id: int,
     visit_period: str,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    קבלת דוח עמידה מסכם.
+    # וודא שההמלצות שייכות למשתמש
+    rec = db.query(NutritionistRecommendations).filter(
+        NutritionistRecommendations.id == recommendation_id,
+        NutritionistRecommendations.user_id == current_user.id
+    ).first()
     
-    Query Parameters:
-        - recommendation_id: ID של המלצות הביקור
-        - visit_period: תקופת הביקור
+    if not rec:
+        raise HTTPException(
+            status_code=404,
+            detail="Recommendations not found"
+        )
     
-    Returns:
-        דוח מסכם
-    """
     report = generate_compliance_report(recommendation_id, visit_period, db)
     return report
 
@@ -87,17 +92,21 @@ def get_compliance_report(
 @router.get("/{recommendation_id}", response_model=List[ComplianceResponse])
 def get_compliance_by_recommendation(
     recommendation_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    קבלת כל דיווחי העמידה להמלצות ספציפיות.
+    # וודא שההמלצות שייכות למשתמש
+    rec = db.query(NutritionistRecommendations).filter(
+        NutritionistRecommendations.id == recommendation_id,
+        NutritionistRecommendations.user_id == current_user.id
+    ).first()
     
-    Path Parameter:
-        - recommendation_id: ID של ההמלצות
+    if not rec:
+        raise HTTPException(
+            status_code=404,
+            detail="Recommendations not found"
+        )
     
-    Returns:
-        רשימת דיווחי עמידה
-    """
     compliances = db.query(Compliance).filter(
         Compliance.recommendation_id == recommendation_id
     ).all()
@@ -109,26 +118,27 @@ def get_compliance_by_recommendation(
 def update_compliance(
     compliance_id: int,
     compliance_data: ComplianceCreate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    עדכון דיווח עמידה קיים.
-    
-    Path Parameter:
-        - compliance_id: ID של הדיווח
-    
-    Body:
-        - נתונים מעודכנים
-    
-    Returns:
-        הדיווח המעודכן
-    """
     compliance = db.query(Compliance).filter(Compliance.id == compliance_id).first()
     
     if not compliance:
         raise HTTPException(
             status_code=404,
             detail=f"Compliance with id {compliance_id} not found"
+        )
+    
+    # וודא שההמלצות שייכות למשתמש
+    rec = db.query(NutritionistRecommendations).filter(
+        NutritionistRecommendations.id == compliance.recommendation_id,
+        NutritionistRecommendations.user_id == current_user.id
+    ).first()
+    
+    if not rec:
+        raise HTTPException(
+            status_code=404,
+            detail="Recommendations not found"
         )
     
     compliance.status = compliance_data.status
@@ -142,22 +152,29 @@ def update_compliance(
 
 
 @router.delete("/{compliance_id}")
-def delete_compliance(compliance_id: int, db: Session = Depends(get_db)):
-    """
-    מחיקת דיווח עמידה.
-    
-    Path Parameter:
-        - compliance_id: ID של הדיווח
-    
-    Returns:
-        הודעת הצלחה
-    """
+def delete_compliance(
+    compliance_id: int, 
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     compliance = db.query(Compliance).filter(Compliance.id == compliance_id).first()
     
     if not compliance:
         raise HTTPException(
             status_code=404,
             detail=f"Compliance with id {compliance_id} not found"
+        )
+    
+    # וודא שההמלצות שייכות למשתמש
+    rec = db.query(NutritionistRecommendations).filter(
+        NutritionistRecommendations.id == compliance.recommendation_id,
+        NutritionistRecommendations.user_id == current_user.id
+    ).first()
+    
+    if not rec:
+        raise HTTPException(
+            status_code=404,
+            detail="Recommendations not found"
         )
     
     db.delete(compliance)

@@ -8,9 +8,11 @@ from app.models.plate import Plate
 from app.models.hunger_log import HungerLog
 from app.models.snack import Snack
 from app.models.weekly_notes import WeeklyNotes
-from app.routes import meals, snacks, plates, hunger, weekly, media
+from app.models.user import User  # 🆕
+from app.models.nutritionist_recommendations import NutritionistRecommendations
+from app.models.compliance import Compliance
+from app.routes import meals, snacks, plates, hunger, weekly, media, recommendations, compliance, auth
 from app.utils.exceptions import ValidationError, NotFoundError, FileUploadError, DuplicateError
-from app.routes import meals, snacks, plates, hunger, weekly, media, recommendations, compliance
 
 Base.metadata.create_all(bind=engine)
 
@@ -77,6 +79,7 @@ app.include_router(weekly.router)
 app.include_router(media.router)
 app.include_router(recommendations.router)
 app.include_router(compliance.router)
+app.include_router(auth.router)  # 🆕
 
 @app.get("/")
 def read_root():

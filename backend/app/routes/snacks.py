@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.snack import Snack
+from app.models.user import User
 from app.schemas.snack import SnackCreate, SnackResponse
+from app.utils.dependencies import get_current_user
 from typing import List
 
 router = APIRouter(
@@ -12,8 +14,13 @@ router = APIRouter(
 
 # יצירת נשנוש
 @router.post("/", response_model=SnackResponse)
-def create_snack(snack: SnackCreate, db: Session = Depends(get_db)):
+def create_snack(
+    snack: SnackCreate, 
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     new_snack = Snack(
+        user_id=current_user.id,
         date=snack.date,
         description=snack.description
     )
@@ -24,17 +31,34 @@ def create_snack(snack: SnackCreate, db: Session = Depends(get_db)):
 
 # קבלת נשנושים
 @router.get("/", response_model=List[SnackResponse])
-def get_snacks(date: str = None, db: Session = Depends(get_db)):
+def get_snacks(
+    date: str = None, 
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     if date:
-        snacks = db.query(Snack).filter(Snack.date == date).all()
+        snacks = db.query(Snack).filter(
+            Snack.date == date,
+            Snack.user_id == current_user.id
+        ).all()
     else:
-        snacks = db.query(Snack).all()
+        snacks = db.query(Snack).filter(
+            Snack.user_id == current_user.id
+        ).all()
     return snacks
 
 # מחיקת נשנוש
 @router.delete("/{snack_id}")
-def delete_snack(snack_id: int, db: Session = Depends(get_db)):
-    snack = db.query(Snack).filter(Snack.id == snack_id).first()
+def delete_snack(
+    snack_id: int, 
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    snack = db.query(Snack).filter(
+        Snack.id == snack_id,
+        Snack.user_id == current_user.id
+    ).first()
+    
     if not snack:
         raise HTTPException(status_code=404, detail="Snack not found")
     

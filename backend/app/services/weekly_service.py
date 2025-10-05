@@ -6,6 +6,7 @@ from typing import List, Dict
 def create_weekly_notes(
     week_start_date: str,
     new_foods: List[Dict],
+    user_id: int,
     db: Session
 ) -> WeeklyNotes:
     """
@@ -14,6 +15,7 @@ def create_weekly_notes(
     Args:
         week_start_date: תאריך תחילת השבוע (YYYY-MM-DD)
         new_foods: רשימת מזונות - [{"food_name": str, "difficulty_level": int, "notes": str}, ...]
+        user_id: ID של המשתמש
         db: database session
     
     Returns:
@@ -40,7 +42,8 @@ def create_weekly_notes(
     
     # בדיקה: האם כבר קיימת רשומה לשבוע הזה
     existing = db.query(WeeklyNotes).filter(
-        WeeklyNotes.week_start_date == week_start_date
+        WeeklyNotes.week_start_date == week_start_date,
+        WeeklyNotes.user_id == user_id
     ).first()
     
     if existing:
@@ -50,6 +53,7 @@ def create_weekly_notes(
         )
     
     weekly_notes = WeeklyNotes(
+        user_id=user_id,
         week_start_date=week_start_date,
         new_foods=new_foods  # SQLAlchemy אוטומטית ממיר ל-JSON
     )
@@ -61,12 +65,13 @@ def create_weekly_notes(
     return weekly_notes
 
 
-def get_weekly_notes_by_week(week_start_date: str, db: Session) -> WeeklyNotes:
+def get_weekly_notes_by_week(week_start_date: str, user_id: int, db: Session) -> WeeklyNotes:
     """
     מחזיר רשומה שבועית לפי תאריך.
     
     Args:
         week_start_date: תאריך תחילת השבוע
+        user_id: ID של המשתמש
         db: database session
     
     Returns:
@@ -76,7 +81,8 @@ def get_weekly_notes_by_week(week_start_date: str, db: Session) -> WeeklyNotes:
         HTTPException: אם לא נמצאה רשומה
     """
     notes = db.query(WeeklyNotes).filter(
-        WeeklyNotes.week_start_date == week_start_date
+        WeeklyNotes.week_start_date == week_start_date,
+        WeeklyNotes.user_id == user_id
     ).first()
     
     if not notes:

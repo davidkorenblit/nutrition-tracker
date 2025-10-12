@@ -1,6 +1,6 @@
 from pydantic import BaseModel, field_validator
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from app.utils.validators import validate_date_format_pydantic
 
 
@@ -14,12 +14,39 @@ class MealCreate(BaseModel):
         return validate_date_format_pydantic(v)
 
 
+class PlateResponse(BaseModel):
+    """Response schema for Plate (nested in MealResponse)"""
+    id: int
+    meal_id: int
+    plate_type: str
+    vegetables_percent: int
+    protein_percent: int
+    carbs_percent: int
+    
+    class Config:
+        from_attributes = True
+
+
+class HungerLogResponse(BaseModel):
+    """Response schema for HungerLog (nested in MealResponse)"""
+    id: int
+    meal_id: int
+    log_type: str
+    hunger_level: int
+    timestamp: datetime
+    
+    class Config:
+        from_attributes = True
+
+
 class MealResponse(BaseModel):
     id: int
     meal_type: str
     date: str
     timestamp: datetime
     photo_url: Optional[str] = None
+    plates: List[PlateResponse] = []  # 🆕 הוסף!
+    hunger_logs: List[HungerLogResponse] = []  # 🆕 בונוס - גם hunger logs!
     
     class Config:
         from_attributes = True

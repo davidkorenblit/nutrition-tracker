@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload  # 🆕 הוסף joinedload!
 from app.database import get_db
 from app.models.meal import Meal
 from app.models.user import User
@@ -22,15 +22,21 @@ def get_meals(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    # 🆕 הוסף joinedload לטעינת relationships!
+    query = db.query(Meal).options(
+        joinedload(Meal.plates),
+        joinedload(Meal.hunger_logs)
+    )
+    
     # אם התאריך סופק - וודא שיש 3 ארוחות
     if date:
         ensure_daily_meals(date, current_user.id, db)
-        meals = db.query(Meal).filter(
+        meals = query.filter(
             Meal.date == date,
             Meal.user_id == current_user.id
         ).all()
     else:
-        meals = db.query(Meal).filter(
+        meals = query.filter(
             Meal.user_id == current_user.id
         ).all()
     
@@ -43,7 +49,11 @@ def get_meal(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    meal = db.query(Meal).filter(
+    # 🆕 גם כאן - joinedload!
+    meal = db.query(Meal).options(
+        joinedload(Meal.plates),
+        joinedload(Meal.hunger_logs)
+    ).filter(
         Meal.id == meal_id,
         Meal.user_id == current_user.id
     ).first()
@@ -134,6 +144,12 @@ def complete_meal(
     if meal_data.photo_url:
         meal.photo_url = meal_data.photo_url
         db.commit()
-        db.refresh(meal)
+    
+    # 🆕 5. טען מחדש עם relationships לפני החזרה!
+    db.refresh(meal)
+    meal = db.query(Meal).options(
+        joinedload(Meal.plates),
+        joinedload(Meal.hunger_logs)
+    ).filter(Meal.id == meal.id).first()
     
     return meal

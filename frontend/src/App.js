@@ -5,7 +5,12 @@ import authService from './services/authService';
 // Import pages
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
-import DashboardPage from './pages/DashboardPage';  // 🆕
+import DashboardPage from './pages/DashboardPage';
+import MealEntryPage from './pages/MealEntryPage';
+import AddSnackPage from './pages/AddSnackPage';
+import WeeklyReviewPage from './pages/WeeklyReviewPage';
+import RecommendationsPage from './pages/RecommendationsPage';
+import CompliancePage from './pages/CompliancePage';  // 🆕
 
 // Protected Route Component
 function ProtectedRoute({ children }) {
@@ -31,7 +36,47 @@ function App() {
           path="/dashboard"
           element={
             <ProtectedRoute>
-              <DashboardPage />  {/* 🆕 */}
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/meal-entry"
+          element={
+            <ProtectedRoute>
+              <MealEntryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/add-snack"
+          element={
+            <ProtectedRoute>
+              <AddSnackPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/weekly-review"
+          element={
+            <ProtectedRoute>
+              <WeeklyReviewPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/recommendations"
+          element={
+            <ProtectedRoute>
+              <RecommendationsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/compliance"
+          element={
+            <ProtectedRoute>
+              <CompliancePage />  {/* 🆕 */}
             </ProtectedRoute>
           }
         />

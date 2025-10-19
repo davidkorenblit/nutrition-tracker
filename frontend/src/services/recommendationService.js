@@ -1,47 +1,64 @@
 import api from './api';
+import axios from 'axios';
+
+const API_URL = 'http://localhost:8000/api/v1/recommendations';
 
 const recommendationService = {
-  // העלאת קובץ Word עם המלצות
-  uploadRecommendations: async (visitDate, file) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const response = await api.post(
-      `/api/v1/recommendations/upload?visit_date=${visitDate}`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+  /**
+   * העלאת קובץ Word עם המלצות
+   * משדרת FormData עם הקובץ, ו-visit_date כ-query parameter
+   */
+ uploadRecommendations: async (visitDate, file) => {
+  const formattedDate = new Date(visitDate).toISOString().split('T')[0];
+  
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const token = localStorage.getItem('access_token');
+
+  return axios.post(
+    `http://localhost:8000/api/v1/recommendations/upload?visit_date=${formattedDate}`,
+    formData,
+    {
+      headers: {
+        'Authorization': `Bearer ${token}`
       }
-    );
-    return response.data;
-  },
+    }
+  ).then(r => r.data);
+},
 
-  // קבלת כל ההמלצות
+  /**
+   * קבל את כל ההמלצות של המשתמש
+   */
   getAllRecommendations: async () => {
-    const response = await api.get('/api/v1/recommendations/');
+    const response = await api.get(API_URL);
     return response.data;
   },
 
-  // קבלת המלצה ספציפית
-  getRecommendation: async (recommendationId) => {
-    const response = await api.get(`/api/v1/recommendations/${recommendationId}`);
+  /**
+   * קבל המלצה ספציפית
+   */
+  getRecommendation: async (id) => {
+    const response = await api.get(`${API_URL}/${id}`);
     return response.data;
   },
 
-  // תיוג המלצה (סיווג ידני)
-  tagRecommendation: async (recommendationId, tagData) => {
+  /**
+   * עדכן תיוג של פריט המלצה
+   */
+  tagRecommendationItem: async (recommendationId, tagUpdate) => {
     const response = await api.put(
-      `/api/v1/recommendations/${recommendationId}/tag`,
-      tagData
+      `${API_URL}/${recommendationId}/tag`,
+      tagUpdate
     );
     return response.data;
   },
 
-  // מחיקת המלצה
-  deleteRecommendation: async (recommendationId) => {
-    const response = await api.delete(`/api/v1/recommendations/${recommendationId}`);
+  /**
+   * מחק המלצה
+   */
+  deleteRecommendation: async (id) => {
+    const response = await api.delete(`${API_URL}/${id}`);
     return response.data;
   },
 };

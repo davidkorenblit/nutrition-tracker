@@ -1,9 +1,11 @@
 import os
 import uuid
 import re
+import json
 from pathlib import Path
 from fastapi import UploadFile, HTTPException
-import mammoth
+from docx import Document
+import google.generativeai as genai
 
 UPLOAD_DIR = Path("uploads/recommendations")
 ALLOWED_EXTENSIONS = {"docx"}
@@ -53,7 +55,7 @@ async def save_word_file(file: UploadFile) -> str:
             status_code=400,
             detail=f"File too large. Max size: {MAX_FILE_SIZE / 1024 / 1024}MB"
         )
-    
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     with open(file_path, "wb") as f:
         f.write(content)
     
@@ -62,7 +64,8 @@ async def save_word_file(file: UploadFile) -> str:
 
 def parse_word_file(file_path: str) -> str:
     """
-    חילוץ טקסט מקובץ Word באמצעות mammoth.
+    חילוץ טקסט מקובץ Word באמצעות python-docx.
+    קורא גם פסקאות רגילות וגם תוכן של טבלאות.
     
     Args:
         file_path: נתיב לקובץ Word
@@ -74,9 +77,23 @@ def parse_word_file(file_path: str) -> str:
         HTTPException: אם הקריאה נכשלה
     """
     try:
-        with open(file_path, "rb") as docx_file:
-            result = mammoth.extract_raw_text(docx_file)
-            return result.value
+        doc = Document(file_path)
+        full_text = []
+        
+        # חלץ טקסט מפסקאות רגילות
+        for para in doc.paragraphs:
+            if para.text.strip():  # רק אם יש טקסט
+                full_text.append(para.text)
+        
+        # חלץ טקסט מטבלאות
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    if cell.text.strip():  # רק אם יש טקסט
+                        full_text.append(cell.text)
+        
+        return '\n'.join(full_text)
+        
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -84,64 +101,78 @@ def parse_word_file(file_path: str) -> str:
         )
 
 
-def extract_recommendations_section(text: str) -> str:
+def extract_recommendations_with_llm(raw_text: str) -> list[dict]:
     """
-    חילוץ סעיף 'המלצות לבית' מהטקסט.
+    חילוץ המלצות מהטקסט באמצעות Gemini LLM.
     
     Args:
-        text: טקסט מלא מהקובץ
+        raw_text: הטקסט המלא מקובץ Word
     
     Returns:
-        str: רק סעיף ההמלצות
+        list[dict]: רשימת המלצות בפורמט [{"id": 1, "text": "..."}, ...]
+    
+    Raises:
+        HTTPException: אם הקריאה ל-LLM נכשלה
     """
-    # חיפוש סעיף "המלצות לבית" (עם וריאציות)
-    patterns = [
-        r"המלצות לבית[:\s]+(.*?)(?=\n\n|הערות:|$)",
-        r"המלצות[:\s]+(.*?)(?=\n\n|הערות:|$)",
-    ]
-    
-    for pattern in patterns:
-        match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
-    
-    # אם לא נמצא סעיף ספציפי, החזר את כל הטקסט
-    return text.strip()
+    try:
+        # הגדרת API key
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            raise HTTPException(
+                status_code=500,
+                detail="GEMINI_API_KEY not configured"
+            )
+        
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-flash-latest')
+        
+        # בניית prompt
+        prompt = f"""
+אתה עוזר שמנתח מסמכי Word של תזונאים.
+חלץ את כל ההמלצות מסעיף "המלצות לבית" בלבד.
+החזר רשימת JSON בפורמט הבא בדיוק, ללא טקסט נוסף:
+[{{"id": 1, "text": "טקסט ההמלצה הראשונה"}}, {{"id": 2, "text": "טקסט ההמלצה השנייה"}}]
 
+חשוב:
+- רק המלצות מהסעיף "המלצות לבית"
+- כל המלצה כשורה נפרדת
+- אל תוסיף הסברים או טקסט נוסף, רק JSON
+- אם אין המלצות, החזר []
 
-def parse_recommendations_to_list(recommendations_text: str) -> list[dict]:
-    """
-    המרת טקסט המלצות לרשימת dict.
-    כל שורה שמתחילה במספר = המלצה.
-    
-    Args:
-        recommendations_text: טקסט ההמלצות
-    
-    Returns:
-        list[dict]: רשימת המלצות
-    """
-    lines = recommendations_text.split('\n')
-    recommendations = []
-    item_id = 1
-    
-    for line in lines:
-        line = line.strip()
-        # בדוק אם השורה מתחילה במספר (1. 2. 3. וכו')
-        if re.match(r'^\d+\.', line):
-            # הסר את המספר מתחילת השורה
-            text = re.sub(r'^\d+\.\s*', '', line)
-            if text:  # רק אם יש טקסט
-                recommendations.append({
-                    "id": item_id,
-                    "text": text,
-                    "category": "general",  # ברירת מחדל
-                    "tracked": False,
-                    "target_value": None,
-                    "notes": None
-                })
-                item_id += 1
-    
-    return recommendations
+טקסט המסמך:
+{raw_text}
+"""
+        
+        # קריאה ל-LLM
+        response = model.generate_content(prompt)
+        response_text = response.text.strip()
+        
+        # ניקוי התגובה (הסרת markdown אם יש)
+        response_text = re.sub(r'```json\s*', '', response_text)
+        response_text = re.sub(r'```\s*', '', response_text)
+        
+        # המרה ל-JSON
+        recommendations_list = json.loads(response_text)
+        
+        # הוסף שדות ברירת מחדל לכל המלצה
+        for rec in recommendations_list:
+            rec["category"] = "general"
+            rec["tracked"] = False
+            rec["target_value"] = None
+            rec["notes"] = None
+        
+        return recommendations_list
+        
+    except json.JSONDecodeError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to parse LLM response as JSON: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to extract recommendations with LLM: {str(e)}"
+        )
 
 
 def delete_word_file(file_path: str) -> bool:

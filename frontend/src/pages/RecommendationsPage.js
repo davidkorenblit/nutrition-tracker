@@ -12,9 +12,20 @@ function RecommendationsPage() {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
+  const [uploadedFileInfo, setUploadedFileInfo] = useState(null);
+  
+  // 🆕 Modal states
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
     loadRecommendations();
+    
+    const savedUploadInfo = localStorage.getItem('uploadedFileInfo');
+    if (savedUploadInfo) {
+      setUploadedFileInfo(JSON.parse(savedUploadInfo));
+    }
   }, []);
 
   const loadRecommendations = async () => {
@@ -22,6 +33,12 @@ function RecommendationsPage() {
       setLoading(true);
       const data = await recommendationService.getAllRecommendations();
       setRecommendations(data);
+      
+      // If no recommendations, clear upload info
+      if (data.length === 0) {
+        setUploadedFileInfo(null);
+        localStorage.removeItem('uploadedFileInfo');
+      }
     } catch (err) {
       console.error('Error loading recommendations:', err);
       setError('Failed to load recommendations');
@@ -39,6 +56,7 @@ function RecommendationsPage() {
       }
       setSelectedFile(file);
       setError('');
+      setUploadedFileInfo(null);
     }
   };
 
@@ -51,21 +69,67 @@ function RecommendationsPage() {
     try {
       setUploading(true);
       setError('');
-      await recommendationService.uploadRecommendations(visitDate, selectedFile);
       
-      // Reload recommendations
+      const result = await recommendationService.uploadRecommendations(visitDate, selectedFile);
+      
+      const uploadInfo = {
+        fileName: selectedFile.name,
+        uploadDate: new Date().toLocaleString('he-IL', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        }),
+        visitDate: visitDate,
+        recommendationsCount: result?.recommendations?.length || 0
+      };
+      
+      setUploadedFileInfo(uploadInfo);
+      localStorage.setItem('uploadedFileInfo', JSON.stringify(uploadInfo));
+      
       await loadRecommendations();
       
-      // Reset form
       setSelectedFile(null);
       setVisitDate(new Date().toISOString().split('T')[0]);
-      
-      alert('Recommendations uploaded successfully!');
     } catch (err) {
       console.error('Error uploading:', err);
       setError(err.response?.data?.detail || 'Failed to upload file');
     } finally {
       setUploading(false);
+    }
+  };
+
+  // 🆕 Open delete modal
+  const openDeleteModal = (id) => {
+    setDeleteId(id);
+    setShowDeleteModal(true);
+  };
+
+  // 🆕 Confirm delete
+  const confirmDelete = async () => {
+    try {
+      setLoading(true);
+      await recommendationService.deleteRecommendation(deleteId);
+      const updatedData = await recommendationService.getAllRecommendations();
+      setRecommendations(updatedData);
+      
+      // If no recommendations left, clear upload info
+      if (updatedData.length === 0) {
+        setUploadedFileInfo(null);
+        localStorage.removeItem('uploadedFileInfo');
+      }
+      
+      setShowDeleteModal(false);
+      setShowSuccessModal(true);
+      setTimeout(() => setShowSuccessModal(false), 2000);
+    } catch (err) {
+      console.error('Error deleting:', err);
+      setError(err.response?.data?.detail || 'Failed to delete recommendation');
+      setShowDeleteModal(false);
+    } finally {
+      setLoading(false);
+      setDeleteId(null);
     }
   };
 
@@ -90,11 +154,9 @@ function RecommendationsPage() {
   };
 
   const filteredRecommendations = recommendations.filter(rec => {
-    // Search filter
     const matchesSearch = rec.recommendations.some(item =>
       item.text.toLowerCase().includes(searchTerm.toLowerCase())
     );
-
     return matchesSearch;
   });
 
@@ -136,6 +198,18 @@ function RecommendationsPage() {
           </div>
         )}
 
+        {/* Upload Success Confirmation */}
+        {uploadedFileInfo && (
+          <div className="mb-4 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+            <div className="flex items-center gap-3">
+              <span className="text-green-600 text-xl">✓</span>
+              <p className="text-sm text-green-800">
+                <span className="font-medium">קובץ הועלה בהצלחה!</span> נמצאו {uploadedFileInfo.recommendationsCount} המלצות
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Upload Section */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">
@@ -143,7 +217,6 @@ function RecommendationsPage() {
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* File Input */}
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Word Document (.docx)
@@ -167,7 +240,6 @@ function RecommendationsPage() {
               </div>
             </div>
 
-            {/* Visit Date */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Visit Date
@@ -181,7 +253,6 @@ function RecommendationsPage() {
             </div>
           </div>
 
-          {/* Upload Button */}
           <button
             onClick={handleUpload}
             disabled={!selectedFile || uploading}
@@ -199,7 +270,6 @@ function RecommendationsPage() {
         {recommendations.length > 0 && (
           <div className="bg-white rounded-lg shadow-md p-4 mb-6">
             <div className="flex flex-col md:flex-row gap-4">
-              {/* Search */}
               <div className="flex-1">
                 <input
                   type="text"
@@ -210,7 +280,6 @@ function RecommendationsPage() {
                 />
               </div>
 
-              {/* Category Filter */}
               <div>
                 <select
                   value={filterCategory}
@@ -243,7 +312,6 @@ function RecommendationsPage() {
           <div className="space-y-6">
             {filteredRecommendations.map((rec) => (
               <div key={rec.id} className="bg-white rounded-lg shadow-md p-6">
-                {/* Visit Header */}
                 <div className="flex items-center justify-between mb-4 pb-4 border-b">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-800">
@@ -257,10 +325,17 @@ function RecommendationsPage() {
                       {rec.recommendations.length} recommendations
                     </p>
                   </div>
-                  <span className="text-2xl">📅</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">📅</span>
+                    <button
+                      onClick={() => openDeleteModal(rec.id)}
+                      className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium"
+                    >
+                      🗑️ Delete
+                    </button>
+                  </div>
                 </div>
 
-                {/* Recommendations Items */}
                 <div className="space-y-3">
                   {rec.recommendations
                     .filter(item => 
@@ -314,6 +389,58 @@ function RecommendationsPage() {
           </ul>
         </div>
       </div>
+
+      {/* 🆕 Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+                <span className="text-3xl">🗑️</span>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                מחיקת המלצות
+              </h3>
+              <p className="text-gray-600 mb-6">
+                האם אתה בטוח שברצונך למחוק את סט ההמלצות הזה? פעולה זו לא ניתנת לביטול.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="flex-1 px-4 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium transition-colors"
+                >
+                  ביטול
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 font-medium transition-colors"
+                >
+                  מחק
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🆕 Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+                <span className="text-3xl">✓</span>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                נמחק בהצלחה!
+              </h3>
+              <p className="text-gray-600">
+                ההמלצות נמחקו מהמערכת
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

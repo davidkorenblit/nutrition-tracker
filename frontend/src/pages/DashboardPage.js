@@ -3,21 +3,25 @@ import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 import mealService from '../services/mealService';
 import snackService from '../services/snackService';
+import waterService from '../services/waterService';
 
 function DashboardPage() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [meals, setMeals] = useState([]);
   const [snacks, setSnacks] = useState([]);
+  const [totalWater, setTotalWater] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [userData, mealsData, snacksData] = await Promise.all([
+        const today = new Date().toISOString().split('T')[0];
+        const [userData, mealsData, snacksData, waterData] = await Promise.all([
           authService.getProfile(),
-          mealService.getMeals(new Date().toISOString().split('T')[0]),
-          snackService.getSnacks(new Date().toISOString().split('T')[0])
+          mealService.getMeals(today),
+          snackService.getSnacks(today),
+          waterService.getTotalWater(today)
         ]);
 
         console.log('📊 Meals loaded:', mealsData);
@@ -32,6 +36,7 @@ function DashboardPage() {
         setUser(userData);
         setMeals(mealsData);
         setSnacks(snacksData);
+        setTotalWater(waterData.total_ml);
       } catch (error) {
         console.error('Failed to load data:', error);
       } finally {
@@ -97,7 +102,7 @@ function DashboardPage() {
         {/* Daily Summary */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Daily Summary</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div className="bg-blue-50 p-4 rounded">
               <p className="text-sm text-gray-600">Meals Completed</p>
               <p className="text-3xl font-bold text-blue-600">{completedMeals}/3</p>
@@ -105,6 +110,11 @@ function DashboardPage() {
             <div className="bg-green-50 p-4 rounded">
               <p className="text-sm text-gray-600">Snacks Today</p>
               <p className="text-3xl font-bold text-green-600">{snacks.length}</p>
+            </div>
+            <div className="bg-cyan-50 p-4 rounded">
+              <p className="text-sm text-gray-600">Water Today</p>
+              <p className="text-3xl font-bold text-cyan-600">{totalWater}</p>
+              <p className="text-xs text-gray-500">ml</p>
             </div>
           </div>
           <div className="mt-4">
@@ -195,8 +205,22 @@ function DashboardPage() {
         {/* Quick Navigation */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Quick Navigation</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             
+            {/* Water Tracking */}
+            <button
+              onClick={() => navigate('/water-tracking')}
+              className="p-6 border-2 border-cyan-200 rounded-lg hover:border-cyan-400 hover:bg-cyan-50 transition-all text-left"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-3xl">💧</span>
+                <h3 className="text-lg font-semibold text-gray-800">Water Tracking</h3>
+              </div>
+              <p className="text-sm text-gray-600">
+                Track your daily water intake
+              </p>
+            </button>
+
             {/* Weekly Review */}
             <button
               onClick={() => navigate('/weekly-review')}

@@ -10,7 +10,8 @@ import MealEntryPage from './pages/MealEntryPage';
 import AddSnackPage from './pages/AddSnackPage';
 import WeeklyReviewPage from './pages/WeeklyReviewPage';
 import RecommendationsPage from './pages/RecommendationsPage';
-import CompliancePage from './pages/CompliancePage';  // 🆕
+import CompliancePage from './pages/CompliancePage';
+import WaterTrackingPage from './pages/WaterTrackingPage';
 
 // Protected Route Component
 function ProtectedRoute({ children }) {
@@ -76,7 +77,15 @@ function App() {
           path="/compliance"
           element={
             <ProtectedRoute>
-              <CompliancePage />  {/* 🆕 */}
+              <CompliancePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/water-tracking"
+          element={
+            <ProtectedRoute>
+              <WaterTrackingPage />
             </ProtectedRoute>
           }
         />

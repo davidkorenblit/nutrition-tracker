@@ -71,3 +71,5 @@ class CompleteMealCreate(BaseModel):
     
     # Photo (אופציונלי)
     photo_url: Optional[str] = None
+    #Text
+    notes: str = ""

@@ -144,7 +144,12 @@ def complete_meal(
     if meal_data.photo_url:
         meal.photo_url = meal_data.photo_url
         db.commit()
+    # note.
+    if meal_data.notes:
+        meal.notes = meal_data.notes
     
+    db.commit()
+
     # 🆕 5. טען מחדש עם relationships לפני החזרה!
     db.refresh(meal)
     meal = db.query(Meal).options(

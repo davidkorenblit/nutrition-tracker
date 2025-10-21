@@ -12,6 +12,8 @@ class Meal(Base):
     date = Column(String, nullable=False)
     timestamp = Column(DateTime, default=datetime.utcnow)
     photo_url = Column(String, nullable=True)  
+    notes = Column(String, nullable=True)
+
     
     # קשרים
     plates = relationship("Plate", back_populates="meal", cascade="all, delete-orphan")

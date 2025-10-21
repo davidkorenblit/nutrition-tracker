@@ -43,6 +43,10 @@ function MealEntryPage() {
 
   // State - Submission
   const [submitting, setSubmitting] = useState(false);
+  
+  // State - nites
+  const [notes, setNotes] = useState('');
+
 
   // Load meal data on mount
   useEffect(() => {
@@ -174,84 +178,8 @@ function MealEntryPage() {
 
     return true;
   };
-  /*
-// Validate form
-const isFormValid = () => {
-  console.log('🔍 Checking validation...');
-  console.log('Free Plate:', freePlate);
-  console.log('Sum:', freePlate.vegetables + freePlate.protein + freePlate.carbs);
-  console.log('Hunger Before:', hungerBefore);
-  console.log('Hunger During:', hungerDuring);
-  console.log('Hunger After:', hungerAfter);
   
-  // Check Free Plate sum = 100%
-  const sum = freePlate.vegetables + freePlate.protein + freePlate.carbs;
-  if (sum !== 100) {
-    console.log('❌ FAILED: Sum is not 100');
-    return false;
-  }
 
-  // Check hunger levels (1-10)
-  if (hungerBefore < 1 || hungerBefore > 10) {
-    console.log('❌ FAILED: hungerBefore out of range');
-    return false;
-  }
-  if (hungerDuring < 1 || hungerDuring > 10) {
-    console.log('❌ FAILED: hungerDuring out of range');
-    return false;
-  }
-  if (hungerAfter < 1 || hungerAfter > 10) {
-    console.log('❌ FAILED: hungerAfter out of range');
-    return false;
-  }
-
-  console.log('✅ VALIDATION PASSED!');
-  return true;
-};
-*/
-  // Submit meal
-  /*
-  const handleSubmit = async () => {
-    if (!isFormValid()) {
-      setError('Please fill all fields correctly. Free Plate must sum to 100%.');
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-      setError('');
-
-      // Upload photo if exists
-      let uploadedPhotoUrl = '';
-      if (photoFile) {
-        uploadedPhotoUrl = await uploadPhoto();
-      }
-
-      // Complete meal
-      await mealService.completeMeal({
-        meal_id: mealId,
-        free_plate_vegetables: freePlate.vegetables,
-        free_plate_protein: freePlate.protein,
-        free_plate_carbs: freePlate.carbs,
-        hunger_before: hungerBefore,
-        hunger_during: hungerDuring,
-        hunger_after: hungerAfter,
-        photo_url: uploadedPhotoUrl || undefined,
-      });
-
-      // Clear timer
-      localStorage.removeItem('mealTimerEnd');
-
-      // Navigate to dashboard
-      navigate('/dashboard');
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to save meal. Please try again.');
-      console.error(err);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-*/
 
 // Submit meal
 const handleSubmit = async () => {
@@ -283,6 +211,7 @@ const handleSubmit = async () => {
       hunger_during: hungerDuring,
       hunger_after: hungerAfter,
       photo_url: uploadedPhotoUrl || undefined,
+      notes: notes || ''
     });
 
     // Complete meal
@@ -517,6 +446,18 @@ const handleSubmit = async () => {
             </div>
           )}
         </div>
+
+        {/* Section 4.5: Notes */}
+          <div className="mb-8 pb-8 border-b">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Notes (Optional)</h2>
+             <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add any notes about this meal..."
+               rows="4"
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+         </div>
 
         {/* Section 5: Hunger During */}
         <div className="mb-8 pb-8 border-b">

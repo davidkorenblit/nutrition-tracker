@@ -15,5 +15,6 @@ class WeeklyNotes(Base):
     week_start_date = Column(String, nullable=False)  # פורמט: YYYY-MM-DD
     new_foods = Column(JSON, nullable=False)  # רשימה: [{food_name, difficulty_level, notes}, ...]
     created_at = Column(DateTime, default=datetime.utcnow)
-
+    
+    #relationship
     user = relationship("User", back_populates="weekly_notes")  # 🆕

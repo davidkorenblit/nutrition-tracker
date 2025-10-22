@@ -16,6 +16,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     name = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
+    is_verified = Column(Boolean, default=False)  # NEW: אימות מייל
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # קשרים לטבלאות אחרות (נוסיף בהמשך)
@@ -24,4 +25,3 @@ class User(Base):
     weekly_notes = relationship("WeeklyNotes", back_populates="user", cascade="all, delete-orphan")
     recommendations = relationship("NutritionistRecommendations", back_populates="user", cascade="all, delete-orphan")
     water_logs = relationship("WaterLog", back_populates="user")
-

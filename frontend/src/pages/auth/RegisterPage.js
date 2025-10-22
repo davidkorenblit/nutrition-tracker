@@ -10,6 +10,7 @@ function RegisterPage() {
     name: '',
   });
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -22,23 +23,66 @@ function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess(false);
     setLoading(true);
 
     try {
       await authService.register(formData);
-      // הצלחה - התחבר אוטומטית
-      await authService.login({
-        email: formData.email,
-        password: formData.password,
-      });
-      // נווט ל-Dashboard
-      navigate('/dashboard');
+      // הצלחה - הצג הודעה והפנה למייל
+      setSuccess(true);
+      
+      // הפנה להתחברות אחרי 5 שניות
+      setTimeout(() => {
+        navigate('/login');
+      }, 5000);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Registration failed. Please try again.');
+      // הצג שגיאות ולידציה בצורה ברורה
+      const errorMessage = err.response?.data?.detail;
+      if (Array.isArray(errorMessage)) {
+        // Pydantic validation errors
+        const errors = errorMessage.map(e => e.msg).join(', ');
+        setError(errors);
+      } else {
+        setError(errorMessage || 'Registration failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  // אם הרישום הצליח, הצג הודעת הצלחה
+  if (success) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
+          <div className="text-center">
+            <div className="text-6xl mb-4">📧</div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Registration Successful!
+            </h2>
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-6">
+              <p className="font-semibold mb-2">Please verify your email</p>
+              <p className="text-sm">
+                We've sent a verification link to <strong>{formData.email}</strong>
+              </p>
+              <p className="text-sm mt-2">
+                Check your inbox and click the link to activate your account.
+              </p>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              Redirecting to login page in 5 seconds...
+            </p>
+            <button
+              onClick={() => navigate('/login')}
+              className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Go to Login Now
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -102,13 +146,22 @@ function RegisterPage() {
               name="password"
               type="password"
               required
-              minLength="6"
+              minLength="8"
               value={formData.password}
               onChange={handleChange}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               placeholder="••••••••"
             />
-            <p className="mt-1 text-xs text-gray-500">At least 6 characters</p>
+            <div className="mt-2 text-xs text-gray-500 space-y-1">
+              <p>Password must contain:</p>
+              <ul className="list-disc list-inside pl-2">
+                <li>At least 8 characters</li>
+                <li>One uppercase letter (A-Z)</li>
+                <li>One lowercase letter (a-z)</li>
+                <li>One number (0-9)</li>
+                <li>One special character (!@#$%^&*)</li>
+              </ul>
+            </div>
           </div>
 
           {/* Submit Button */}

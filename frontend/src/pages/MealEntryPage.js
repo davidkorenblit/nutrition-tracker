@@ -44,9 +44,11 @@ function MealEntryPage() {
   // State - Submission
   const [submitting, setSubmitting] = useState(false);
   
-  // State - nites
+  // State - notes
   const [notes, setNotes] = useState('');
 
+  // State - Notification
+  const [showNotification, setShowNotification] = useState(false);
 
   // Load meal data on mount
   useEffect(() => {
@@ -63,7 +65,6 @@ function MealEntryPage() {
         }
       } catch (err) {
         setError('Failed to load meal. Please try again.');
-        console.error(err);
       } finally {
         setLoading(false);
       }
@@ -74,13 +75,30 @@ function MealEntryPage() {
     }
   }, [mealId]);
 
+  // Play notification sound
+  const playNotificationSound = () => {
+    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBjWH0fPTgjMGHm7A7+OZURE');
+    audio.play().catch(e => console.error('Failed to play sound:', e));
+  };
+
+  // Show notification with animation
+  const showTimerNotification = () => {
+    playNotificationSound();
+    setShowNotification(true);
+    setTimerCompleted(true);
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+      setShowNotification(false);
+    }, 5000);
+  };
+
   // Timer polling - check every 10 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       const endTime = localStorage.getItem('mealTimerEnd');
       if (endTime && Date.now() >= parseInt(endTime)) {
-        alert('⏰ Time to check your hunger level during the meal!');
-        setTimerCompleted(true);
+        showTimerNotification();
         localStorage.removeItem('mealTimerEnd');
       }
     }, 10000); // Check every 10 seconds
@@ -92,7 +110,7 @@ function MealEntryPage() {
   const startTimer = () => {
     if (timerStarted) return; // Already started
 
-    const randomMinutes = Math.floor(Math.random() * 4) + 7; // 7-10 minutes
+    const randomMinutes = Math.floor(Math.random() * 4) + 2; // 2-5 minutes
     const endTime = Date.now() + (randomMinutes * 60 * 1000);
     
     localStorage.setItem('mealTimerEnd', endTime);
@@ -157,7 +175,6 @@ function MealEntryPage() {
 
       return response.data.url;
     } catch (err) {
-      console.error('Photo upload failed:', err);
       setError('Failed to upload photo. Continuing without photo.');
       return '';
     } finally {
@@ -178,112 +195,80 @@ function MealEntryPage() {
 
     return true;
   };
-  
 
-
-// Submit meal
-const handleSubmit = async () => {
-  console.log('🔵 handleSubmit CALLED!');  // ← הוסף
-  
-  if (!isFormValid()) {
-    setError('Please fill all fields correctly. Free Plate must sum to 100%.');
-    return;
-  }
-
-  try {
-    console.log('🟢 Starting submission...');  // ← הוסף
-    setSubmitting(true);
-    setError('');
-
-    // Upload photo if exists
-    let uploadedPhotoUrl = '';
-    if (photoFile) {
-      console.log('📸 Uploading photo...');  // ← הוסף
-      uploadedPhotoUrl = await uploadPhoto();
+  // Submit meal
+  const handleSubmit = async () => {
+    if (!isFormValid()) {
+      setError('Please fill all fields correctly. Free Plate must sum to 100%.');
+      return;
     }
 
-    console.log('📤 Sending to backend:', {  // ← הוסף
-      meal_id: mealId,
-      free_plate_vegetables: freePlate.vegetables,
-      free_plate_protein: freePlate.protein,
-      free_plate_carbs: freePlate.carbs,
-      hunger_before: hungerBefore,
-      hunger_during: hungerDuring,
-      hunger_after: hungerAfter,
-      photo_url: uploadedPhotoUrl || undefined,
-      notes: notes || ''
-    });
+    try {
+      setSubmitting(true);
+      setError('');
 
-    // Complete meal
-    await mealService.completeMeal({
-      meal_id: mealId,
-      free_plate_vegetables: freePlate.vegetables,
-      free_plate_protein: freePlate.protein,
-      free_plate_carbs: freePlate.carbs,
-      hunger_before: hungerBefore,
-      hunger_during: hungerDuring,
-      hunger_after: hungerAfter,
-      photo_url: uploadedPhotoUrl || undefined,
-    });
+      // Upload photo if exists
+      let uploadedPhotoUrl = '';
+      if (photoFile) {
+        uploadedPhotoUrl = await uploadPhoto();
+      }
 
-    console.log('✅ Backend responded successfully!');  // ← הוסף
+      // Complete meal
+      await mealService.completeMeal({
+        meal_id: mealId,
+        free_plate_vegetables: freePlate.vegetables,
+        free_plate_protein: freePlate.protein,
+        free_plate_carbs: freePlate.carbs,
+        hunger_before: hungerBefore,
+        hunger_during: hungerDuring,
+        hunger_after: hungerAfter,
+        photo_url: uploadedPhotoUrl || undefined,
+      });
 
-    // Clear timer
-    localStorage.removeItem('mealTimerEnd');
+      // Clear timer
+      localStorage.removeItem('mealTimerEnd');
 
-    // Navigate to dashboard
-    console.log('🔄 Navigating to dashboard...');  // ← הוסף
-    navigate('/dashboard');
-  } catch (err) {
-    console.error('❌ ERROR:', err);  // ← הוסף
-    setError(err.response?.data?.detail || 'Failed to save meal. Please try again.');
-    console.error(err);
-  } finally {
-    setSubmitting(false);
-  }
-};
-
-  // Calculate Free Plate sum
-  const freePlateSum = freePlate.vegetables + freePlate.protein + freePlate.carbs;
-
-  // Healthy Plate data (fixed)
-  const healthyPlateData = {
-    labels: ['Vegetables', 'Protein', 'Carbs'],
-    datasets: [
-      {
-        data: [50, 30, 20],
-        backgroundColor: ['#10B981', '#EF4444', '#F59E0B'],
-        borderWidth: 2,
-        borderColor: '#fff',
-      },
-    ],
+      // Navigate to dashboard
+      navigate('/dashboard');
+    } catch (err) {
+      setError('Failed to save meal. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  // Free Plate data (dynamic)
+  // Chart data
+  const healthyPlateData = {
+    labels: ['Vegetables', 'Protein', 'Carbs'],
+    datasets: [{
+      data: [50, 30, 20],
+      backgroundColor: ['#10b981', '#ef4444', '#f59e0b'],
+    }]
+  };
+
+  const freePlateSum = freePlate.vegetables + freePlate.protein + freePlate.carbs;
   const freePlateData = {
     labels: ['Vegetables', 'Protein', 'Carbs'],
-    datasets: [
-      {
-        data: [freePlate.vegetables, freePlate.protein, freePlate.carbs],
-        backgroundColor: ['#10B981', '#EF4444', '#F59E0B'],
-        borderWidth: 2,
-        borderColor: '#fff',
-      },
-    ],
+    datasets: [{
+      data: [freePlate.vegetables, freePlate.protein, freePlate.carbs],
+      backgroundColor: ['#10b981', '#ef4444', '#f59e0b'],
+    }]
   };
 
   const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: true,
     plugins: {
       legend: {
         position: 'bottom',
-      },
-    },
+      }
+    }
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <p className="text-xl text-gray-600">Loading meal...</p>
+        <div className="text-xl text-gray-600">Loading...</div>
       </div>
     );
   }
@@ -306,6 +291,29 @@ const handleSubmit = async () => {
 
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4">
+      {/* Notification Modal */}
+      {showNotification && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4 transform animate-scaleIn">
+            <div className="text-center">
+              <div className="text-6xl mb-4 animate-bounce">🔔</div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                זמן לבדוק!
+              </h2>
+              <p className="text-lg text-gray-600 mb-6">
+                Time to check your hunger level during the meal!
+              </p>
+              <button
+                onClick={() => setShowNotification(false)}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+              >
+                אישור
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md p-8">
         {/* Header */}
         <div className="mb-8">
@@ -344,7 +352,7 @@ const handleSubmit = async () => {
             </span>
           </div>
           {timerStarted && !timerCompleted && (
-            <p className="mt-2 text-sm text-green-600">⏱️ Timer started! You'll be notified in 7-10 minutes.</p>
+            <p className="mt-2 text-sm text-green-600">⏱️ Timer started! You'll be notified in 2-5 minutes.</p>
           )}
         </div>
 
@@ -448,16 +456,16 @@ const handleSubmit = async () => {
         </div>
 
         {/* Section 4.5: Notes */}
-          <div className="mb-8 pb-8 border-b">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Notes (Optional)</h2>
-             <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add any notes about this meal..."
-               rows="4"
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-         </div>
+        <div className="mb-8 pb-8 border-b">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Notes (Optional)</h2>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Add any notes about this meal..."
+            rows="4"
+            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
 
         {/* Section 5: Hunger During */}
         <div className="mb-8 pb-8 border-b">
@@ -523,6 +531,23 @@ const handleSubmit = async () => {
           </button>
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+          from { transform: scale(0.9); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+        .animate-scaleIn {
+          animation: scaleIn 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 }

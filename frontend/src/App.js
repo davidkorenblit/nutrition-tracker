@@ -12,6 +12,8 @@ import WeeklyReviewPage from './pages/WeeklyReviewPage';
 import RecommendationsPage from './pages/RecommendationsPage';
 import CompliancePage from './pages/CompliancePage';
 import WaterTrackingPage from './pages/WaterTrackingPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
+
 
 // Protected Route Component
 function ProtectedRoute({ children }) {
@@ -31,6 +33,8 @@ function App() {
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/verify" element={<VerifyEmailPage />} />
+
 
         {/* Protected Routes */}
         <Route

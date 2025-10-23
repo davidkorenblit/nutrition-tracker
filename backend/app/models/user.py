@@ -16,8 +16,12 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     name = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
-    is_verified = Column(Boolean, default=False)  # NEW: אימות מייל
+    is_verified = Column(Boolean, default=False)  
     created_at = Column(DateTime, default=datetime.utcnow)
+    daily_water_goal_ml = Column(Integer, default=2000, nullable=False) 
+    compliance_check_frequency_days = Column(Integer, default=14, nullable=False)
+    
+    
     
     # קשרים לטבלאות אחרות (נוסיף בהמשך)
     meals = relationship("Meal", back_populates="user", cascade="all, delete-orphan")

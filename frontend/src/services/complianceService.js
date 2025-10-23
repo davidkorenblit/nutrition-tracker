@@ -2,35 +2,52 @@ import api from './api';
 
 const complianceService = {
   /**
-   * Get compliance report for a recommendation
+   * Trigger a new compliance check
    */
-  async getComplianceReport(recommendationId, visitPeriod) {
-    const response = await api.get(
-      `/api/v1/compliance/report?recommendation_id=${recommendationId}&visit_period=${visitPeriod}`
-    );
+  async runComplianceCheck(periodStart, periodEnd) {
+    const response = await api.post('/api/v1/compliance/check', {
+      period_start: periodStart,
+      period_end: periodEnd
+    });
     return response.data;
   },
 
   /**
-   * Create compliance entry
+   * Get the latest compliance check
    */
-  async createCompliance(complianceData) {
-    const response = await api.post('/api/v1/compliance/', complianceData);
+  async getLatestCheck() {
+    const response = await api.get('/api/v1/compliance/latest');
     return response.data;
   },
 
   /**
-   * Update compliance entry
+   * Get compliance check history
    */
-  async updateCompliance(complianceId, complianceData) {
-    const response = await api.put(`/api/v1/compliance/${complianceId}`, complianceData);
+  async getCheckHistory(limit = 10) {
+    const response = await api.get(`/api/v1/compliance/history?limit=${limit}`);
     return response.data;
   },
 
   /**
-   * Delete compliance entry
+   * Get scores summary (for charts/graphs)
    */
-  async deleteCompliance(complianceId) {
+  async getScoresSummary(limit = 5) {
+    const response = await api.get(`/api/v1/compliance/summary?limit=${limit}`);
+    return response.data;
+  },
+
+  /**
+   * Check if auto-check is due
+   */
+  async checkIfDue() {
+    const response = await api.get('/api/v1/compliance/auto-check-due');
+    return response.data;
+  },
+
+  /**
+   * Delete a compliance check
+   */
+  async deleteCheck(complianceId) {
     const response = await api.delete(`/api/v1/compliance/${complianceId}`);
     return response.data;
   },

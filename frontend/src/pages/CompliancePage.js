@@ -6,80 +6,66 @@ function CompliancePage() {
   const navigate = useNavigate();
   const [latestCheck, setLatestCheck] = useState(null);
   const [checkHistory, setCheckHistory] = useState([]);
-  const [isDueInfo, setIsDueInfo] = useState(null);
-  const [periodStart, setPeriodStart] = useState('');
-  const [periodEnd, setPeriodEnd] = useState('');
   const [loading, setLoading] = useState(true);
-  const [runningCheck, setRunningCheck] = useState(false);
   const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const [showNewCheckForm, setShowNewCheckForm] = useState(false);
+  const [newCheckData, setNewCheckData] = useState({
+    period_start: '',
+    period_end: ''
+  });
+  const [runningCheck, setRunningCheck] = useState(false);
 
   useEffect(() => {
-    loadData();
+    loadComplianceData();
   }, []);
 
-  const loadData = async () => {
+  const loadComplianceData = async () => {
     try {
       setLoading(true);
       setError('');
 
-      // Load latest check
+      // טען את הבדיקה האחרונה
       try {
         const latest = await complianceService.getLatestCheck();
         setLatestCheck(latest);
       } catch (err) {
         if (err.response?.status !== 404) {
-          console.error('Error loading latest check:', err);
+          throw err;
         }
-        // 404 is ok - means no checks yet
+        // אין בדיקות קודמות - זה בסדר
+        setLatestCheck(null);
       }
 
-      // Load check history
-      const history = await complianceService.getCheckHistory(5);
+      // טען היסטוריה
+      const history = await complianceService.getCheckHistory(10);
       setCheckHistory(history);
 
-      // Check if due
-      const dueInfo = await complianceService.checkIfDue();
-      setIsDueInfo(dueInfo);
-
-      // Set default dates (last 2 weeks)
-      const today = new Date();
-      const twoWeeksAgo = new Date(today);
-      twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-      setPeriodStart(twoWeeksAgo.toISOString().split('T')[0]);
-      setPeriodEnd(today.toISOString().split('T')[0]);
-
     } catch (err) {
-      console.error('Error loading data:', err);
+      console.error('Error loading compliance data:', err);
       setError('Failed to load compliance data');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRunCheck = async () => {
-    if (!periodStart || !periodEnd) {
-      setError('Please select both start and end dates');
-      return;
-    }
+  const handleRunCheck = async (e) => {
+    e.preventDefault();
+    setError('');
+    setRunningCheck(true);
 
     try {
-      setRunningCheck(true);
-      setError('');
-      setSuccessMessage('');
-
-      const result = await complianceService.runComplianceCheck(periodStart, periodEnd);
-      setLatestCheck(result);
-      setSuccessMessage('✅ Compliance check completed successfully!');
+      await complianceService.runComplianceCheck(
+        newCheckData.period_start,
+        newCheckData.period_end
+      );
       
-      // Reload history
-      const history = await complianceService.getCheckHistory(5);
-      setCheckHistory(history);
-
-      // Check due status again
-      const dueInfo = await complianceService.checkIfDue();
-      setIsDueInfo(dueInfo);
-
+      // רענן את הנתונים
+      await loadComplianceData();
+      
+      // סגור את הטופס
+      setShowNewCheckForm(false);
+      setNewCheckData({ period_start: '', period_end: '' });
+      
     } catch (err) {
       console.error('Error running check:', err);
       setError(err.response?.data?.detail || 'Failed to run compliance check');
@@ -88,37 +74,30 @@ function CompliancePage() {
     }
   };
 
-  const handleDeleteCheck = async () => {
-    if (!latestCheck) return;
-    
+  const handleDeleteCheck = async (checkId) => {
     if (!window.confirm('Are you sure you want to delete this compliance check?')) {
       return;
     }
 
     try {
-      setError('');
-      await complianceService.deleteCheck(latestCheck.id);
-      setLatestCheck(null); 
-      setSuccessMessage('🗑️ Compliance check deleted successfully!');
-      await loadData();
+      await complianceService.deleteCheck(checkId);
+      await loadComplianceData();
     } catch (err) {
       console.error('Error deleting check:', err);
-      setError(err.response?.data?.detail || 'Failed to delete compliance check');
+      setError('Failed to delete check');
     }
   };
 
   const getScoreColor = (score) => {
     if (score >= 80) return 'text-green-600';
     if (score >= 60) return 'text-yellow-600';
-    if (score >= 40) return 'text-orange-600';
     return 'text-red-600';
   };
 
   const getScoreBgColor = (score) => {
-    if (score >= 80) return 'bg-green-50';
-    if (score >= 60) return 'bg-yellow-50';
-    if (score >= 40) return 'bg-orange-50';
-    return 'bg-red-50';
+    if (score >= 80) return 'bg-green-100';
+    if (score >= 60) return 'bg-yellow-100';
+    return 'bg-red-100';
   };
 
   if (loading) {
@@ -133,12 +112,12 @@ function CompliancePage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow">
-        <div className="max-w-6xl mx-auto px-4 py-6">
+        <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Compliance Tracking</h1>
               <p className="text-sm text-gray-600 mt-1">
-                Automated analysis of your nutrition goals
+                Monitor your adherence to nutrition goals
               </p>
             </div>
             <button
@@ -151,14 +130,7 @@ function CompliancePage() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Success Message */}
-        {successMessage && (
-          <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
-            {successMessage}
-          </div>
-        )}
-
+      <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Error Message */}
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
@@ -166,241 +138,279 @@ function CompliancePage() {
           </div>
         )}
 
-        {/* Due Status Banner */}
-        {isDueInfo && isDueInfo.due && (
-          <div className="mb-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
-            <div className="flex items-center">
-              <span className="text-2xl mr-3">⏰</span>
-              <div>
-                <h3 className="font-semibold text-blue-900">Time for a Check!</h3>
-                <p className="text-sm text-blue-800">{isDueInfo.message}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Run New Check Panel */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">
-            🎯 Run New Compliance Check
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Period Start
-              </label>
-              <input
-                type="date"
-                value={periodStart}
-                onChange={(e) => setPeriodStart(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Period End
-              </label>
-              <input
-                type="date"
-                value={periodEnd}
-                onChange={(e) => setPeriodEnd(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
+        {/* New Check Button */}
+        <div className="mb-6">
           <button
-            onClick={handleRunCheck}
-            disabled={runningCheck || !periodStart || !periodEnd}
-            className={`w-full px-6 py-3 rounded-lg text-white font-medium ${
-              runningCheck || !periodStart || !periodEnd
-                ? 'bg-blue-400 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700'
-            }`}
+            onClick={() => setShowNewCheckForm(!showNewCheckForm)}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
           >
-            {runningCheck ? '⏳ Running Check...' : '▶️ Run Compliance Check'}
+            {showNewCheckForm ? 'Cancel' : '+ Run New Compliance Check'}
           </button>
-
-          <p className="text-xs text-gray-500 mt-2">
-            The system will analyze: water intake, new foods tried, recommendations match, and healthy plates ratio
-          </p>
         </div>
 
-        {/* Latest Check Results */}
-        {latestCheck && (
-          <>
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-              <div className="flex items-center justify-between mb-6">
+        {/* New Check Form */}
+        {showNewCheckForm && (
+          <div className="mb-6 bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">Run New Compliance Check</h2>
+            <form onSubmit={handleRunCheck} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-800">
-                    Latest Check Results
-                  </h2>
-                  <p className="text-sm text-gray-600">
-                    Period: {latestCheck.period_start} to {latestCheck.period_end}
-                  </p>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Period Start
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={newCheckData.period_start}
+                    onChange={(e) => setNewCheckData({ ...newCheckData, period_start: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={handleDeleteCheck}
-                    className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
-                  >
-                    🗑️ Delete Check
-                  </button>
-                  <div className="text-right">
-                    <div className={`text-4xl font-bold ${getScoreColor(latestCheck.overall_score)}`}>
-                      {latestCheck.overall_score?.toFixed(1)}%
-                    </div>
-                    <div className="text-xs text-gray-500">Overall Score</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 4 Scores Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Water Intake */}
-                <div className={`rounded-lg shadow-md p-4 ${getScoreBgColor(latestCheck.water_intake_score || 0)}`}>
-                  <div className="text-center mb-2">
-                    <span className="text-3xl">💧</span>
-                  </div>
-                  <h3 className="text-sm font-semibold text-gray-700 text-center mb-2">
-                    Water Intake
-                  </h3>
-                  <div className={`text-3xl font-bold text-center ${getScoreColor(latestCheck.water_intake_score || 0)}`}>
-                    {latestCheck.water_intake_score?.toFixed(0)}%
-                  </div>
-                  {latestCheck.water_intake_details && (
-                    <div className="mt-3 text-xs text-gray-600 space-y-1">
-                      <p>Avg: {latestCheck.water_intake_details.daily_avg_ml?.toFixed(0)} ml/day</p>
-                      <p>Goal: {latestCheck.water_intake_details.goal_ml} ml/day</p>
-                      <p>Days met: {latestCheck.water_intake_details.days_met_goal}/{latestCheck.water_intake_details.total_days}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* New Foods */}
-                <div className={`rounded-lg shadow-md p-4 ${getScoreBgColor(latestCheck.new_foods_score || 0)}`}>
-                  <div className="text-center mb-2">
-                    <span className="text-3xl">🍎</span>
-                  </div>
-                  <h3 className="text-sm font-semibold text-gray-700 text-center mb-2">
-                    New Foods
-                  </h3>
-                  <div className={`text-3xl font-bold text-center ${getScoreColor(latestCheck.new_foods_score || 0)}`}>
-                    {latestCheck.new_foods_score?.toFixed(0)}%
-                  </div>
-                  {latestCheck.new_foods_details && (
-                    <div className="mt-3 text-xs text-gray-600 space-y-1">
-                      <p>Total new foods: {latestCheck.new_foods_details.total_new_foods}</p>
-                      {latestCheck.new_foods_details.foods?.slice(0, 2).map((food, idx) => (
-                        <p key={idx} className="truncate">• {food.food_name}</p>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Recommendations Match */}
-                <div className={`rounded-lg shadow-md p-4 ${getScoreBgColor(latestCheck.recommendations_match_score || 0)}`}>
-                  <div className="text-center mb-2">
-                    <span className="text-3xl">📋</span>
-                  </div>
-                  <h3 className="text-sm font-semibold text-gray-700 text-center mb-2">
-                    Recommendations
-                  </h3>
-                  <div className={`text-3xl font-bold text-center ${getScoreColor(latestCheck.recommendations_match_score || 0)}`}>
-                    {latestCheck.recommendations_match_score?.toFixed(0)}%
-                  </div>
-                  {latestCheck.recommendations_match_details && (
-                    <div className="mt-3 text-xs text-gray-600 space-y-1">
-                      <p>Followed: {latestCheck.recommendations_match_details.recommendations_followed}/{latestCheck.recommendations_match_details.total_recommendations}</p>
-                      <p className="italic truncate">{latestCheck.recommendations_match_details.analysis}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Healthy Plates */}
-                <div className={`rounded-lg shadow-md p-4 ${getScoreBgColor(latestCheck.healthy_plates_ratio_score || 0)}`}>
-                  <div className="text-center mb-2">
-                    <span className="text-3xl">🍽️</span>
-                  </div>
-                  <h3 className="text-sm font-semibold text-gray-700 text-center mb-2">
-                    Healthy Plates
-                  </h3>
-                  <div className={`text-3xl font-bold text-center ${getScoreColor(latestCheck.healthy_plates_ratio_score || 0)}`}>
-                    {latestCheck.healthy_plates_ratio_score?.toFixed(0)}%
-                  </div>
-                  {latestCheck.healthy_plates_details && (
-                    <div className="mt-3 text-xs text-gray-600 space-y-1">
-                      <p>Healthy: {latestCheck.healthy_plates_details.healthy_plates}</p>
-                      <p>Total: {latestCheck.healthy_plates_details.total_plates}</p>
-                      <p>Ratio: {latestCheck.healthy_plates_details.ratio_percentage?.toFixed(1)}%</p>
-                    </div>
-                  )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Period End
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={newCheckData.period_end}
+                    onChange={(e) => setNewCheckData({ ...newCheckData, period_end: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
               </div>
-
-              {/* Detailed Analysis */}
-              {latestCheck.recommendations_match_details && (
-                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                  <h3 className="font-semibold text-gray-800 mb-2">📊 LLM Analysis</h3>
-                  <p className="text-sm text-gray-700 mb-3">{latestCheck.recommendations_match_details.analysis}</p>
-                  
-                  {latestCheck.recommendations_match_details.matched_items?.length > 0 && (
-                    <div className="mb-3">
-                      <h4 className="text-xs font-semibold text-green-700 mb-1">✅ Followed:</h4>
-                      <ul className="text-xs text-gray-600 space-y-1">
-                        {latestCheck.recommendations_match_details.matched_items.map((item, idx) => (
-                          <li key={idx}>• {item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {latestCheck.recommendations_match_details.unmatched_items?.length > 0 && (
-                    <div>
-                      <h4 className="text-xs font-semibold text-red-700 mb-1">❌ Not Followed:</h4>
-                      <ul className="text-xs text-gray-600 space-y-1">
-                        {latestCheck.recommendations_match_details.unmatched_items.map((item, idx) => (
-                          <li key={idx}>• {item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </>
+              <button
+                type="submit"
+                disabled={runningCheck}
+                className={`px-6 py-2 rounded-lg text-white font-medium ${
+                  runningCheck ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+              >
+                {runningCheck ? 'Running Check...' : 'Run Check'}
+              </button>
+            </form>
+          </div>
         )}
 
-        {/* History */}
-        {checkHistory.length > 0 && (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">
-              📈 Check History
-            </h2>
-            <div className="space-y-3">
-              {checkHistory.map((check) => (
-                <div
-                  key={check.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-                >
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-800">
-                      {check.period_start} to {check.period_end}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(check.check_date).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </p>
+        {/* Latest Check */}
+        {latestCheck && (
+          <div className="mb-8 bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-800">Latest Compliance Check</h2>
+              <div className="text-sm text-gray-600">
+                {new Date(latestCheck.check_date).toLocaleDateString()} 
+                <span className="mx-2">•</span>
+                {latestCheck.period_start} to {latestCheck.period_end}
+              </div>
+            </div>
+
+            {/* Overall Score */}
+            <div className="mb-6 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-2">Overall Compliance Score</p>
+                <p className={`text-5xl font-bold ${getScoreColor(latestCheck.overall_score)}`}>
+                  {latestCheck.overall_score?.toFixed(1)}%
+                </p>
+              </div>
+            </div>
+
+            {/* Individual Scores */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Water Intake */}
+              <div className={`p-4 rounded-lg ${getScoreBgColor(latestCheck.water_intake_score)}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-2xl">💧</span>
+                  <span className={`text-2xl font-bold ${getScoreColor(latestCheck.water_intake_score)}`}>
+                    {latestCheck.water_intake_score?.toFixed(0)}%
+                  </span>
+                </div>
+                <h3 className="font-semibold text-gray-800">Water Intake</h3>
+                {latestCheck.water_intake_details && (
+                  <div className="mt-2 text-sm text-gray-700">
+                    <p>{latestCheck.water_intake_details.days_met_goal}/{latestCheck.water_intake_details.total_days} days met goal</p>
+                    <p>Avg: {latestCheck.water_intake_details.daily_avg_ml.toFixed(0)}ml</p>
                   </div>
-                  <div className={`text-2xl font-bold ${getScoreColor(check.overall_score || 0)}`}>
-                    {check.overall_score?.toFixed(1)}%
+                )}
+              </div>
+
+              {/* New Foods */}
+              <div className={`p-4 rounded-lg ${getScoreBgColor(latestCheck.new_foods_score)}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-2xl">🥗</span>
+                  <span className={`text-2xl font-bold ${getScoreColor(latestCheck.new_foods_score)}`}>
+                    {latestCheck.new_foods_score?.toFixed(0)}%
+                  </span>
+                </div>
+                <h3 className="font-semibold text-gray-800">New Foods</h3>
+                {latestCheck.new_foods_details && (
+                  <div className="mt-2 text-sm text-gray-700">
+                    <p>{latestCheck.new_foods_details.total_new_foods} foods tried</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Recommendations Match */}
+              <div className={`p-4 rounded-lg ${getScoreBgColor(latestCheck.recommendations_match_score)}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-2xl">📋</span>
+                  <span className={`text-2xl font-bold ${getScoreColor(latestCheck.recommendations_match_score)}`}>
+                    {latestCheck.recommendations_match_score?.toFixed(0)}%
+                  </span>
+                </div>
+                <h3 className="font-semibold text-gray-800">Recommendations</h3>
+                {latestCheck.recommendations_match_details && (
+                  <div className="mt-2 text-sm text-gray-700">
+                    <p>{latestCheck.recommendations_match_details.recommendations_followed}/{latestCheck.recommendations_match_details.total_recommendations} followed</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Healthy Plates */}
+              <div className={`p-4 rounded-lg ${getScoreBgColor(latestCheck.healthy_plates_ratio_score)}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-2xl">🍽️</span>
+                  <span className={`text-2xl font-bold ${getScoreColor(latestCheck.healthy_plates_ratio_score)}`}>
+                    {latestCheck.healthy_plates_ratio_score?.toFixed(0)}%
+                  </span>
+                </div>
+                <h3 className="font-semibold text-gray-800">Healthy Meals</h3>
+                {latestCheck.healthy_plates_details && (
+                  <div className="mt-2 text-sm text-gray-700">
+                    <p>{latestCheck.healthy_plates_details.healthy_meals}/{latestCheck.healthy_plates_details.total_reported_meals} meals</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Detailed Breakdown */}
+            <div className="mt-6 space-y-4">
+              {/* Water Details */}
+              {latestCheck.water_intake_details && (
+                <details className="p-4 bg-gray-50 rounded-lg">
+                  <summary className="cursor-pointer font-semibold text-gray-800">
+                    💧 Water Intake Details
+                  </summary>
+                  <div className="mt-3 text-sm text-gray-700 space-y-1">
+                    <p>• Daily Average: {latestCheck.water_intake_details.daily_avg_ml.toFixed(0)}ml</p>
+                    <p>• Goal: {latestCheck.water_intake_details.goal_ml}ml</p>
+                    <p>• Days Met Goal: {latestCheck.water_intake_details.days_met_goal} / {latestCheck.water_intake_details.total_days}</p>
+                    <p>• Success Rate: {latestCheck.water_intake_details.percentage_days_met.toFixed(1)}%</p>
+                  </div>
+                </details>
+              )}
+
+              {/* New Foods Details */}
+              {latestCheck.new_foods_details && latestCheck.new_foods_details.foods.length > 0 && (
+                <details className="p-4 bg-gray-50 rounded-lg">
+                  <summary className="cursor-pointer font-semibold text-gray-800">
+                    🥗 New Foods Details ({latestCheck.new_foods_details.total_new_foods} foods)
+                  </summary>
+                  <div className="mt-3 space-y-2">
+                    {latestCheck.new_foods_details.foods.map((food, index) => (
+                      <div key={index} className="p-3 bg-white rounded border">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-gray-800">{food.food_name}</span>
+                          <span className="text-sm text-gray-600">
+                            Difficulty: {food.difficulty_level}/10
+                          </span>
+                        </div>
+                        {food.notes && (
+                          <p className="text-sm text-gray-600 mt-1">{food.notes}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+
+              {/* Recommendations Details */}
+              {latestCheck.recommendations_match_details && (
+                <details className="p-4 bg-gray-50 rounded-lg">
+                  <summary className="cursor-pointer font-semibold text-gray-800">
+                    📋 Recommendations Match Details
+                  </summary>
+                  <div className="mt-3 text-sm text-gray-700 space-y-2">
+                    <p className="italic">{latestCheck.recommendations_match_details.analysis}</p>
+                    
+                    {latestCheck.recommendations_match_details.matched_items.length > 0 && (
+                      <div>
+                        <p className="font-semibold text-green-700 mt-3">✓ Followed:</p>
+                        <ul className="list-disc list-inside ml-2">
+                          {latestCheck.recommendations_match_details.matched_items.map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {latestCheck.recommendations_match_details.unmatched_items.length > 0 && (
+                      <div>
+                        <p className="font-semibold text-red-700 mt-3">✗ Not Followed:</p>
+                        <ul className="list-disc list-inside ml-2">
+                          {latestCheck.recommendations_match_details.unmatched_items.map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </details>
+              )}
+
+              {/* Healthy Plates Details */}
+              {latestCheck.healthy_plates_details && (
+                <details className="p-4 bg-gray-50 rounded-lg">
+                  <summary className="cursor-pointer font-semibold text-gray-800">
+                    🍽️ Healthy Meals Details
+                  </summary>
+                  <div className="mt-3 text-sm text-gray-700 space-y-1">
+                    <p>• Total Reported Meals: {latestCheck.healthy_plates_details.total_reported_meals}</p>
+                    <p>• Healthy Meals (50/30/20): {latestCheck.healthy_plates_details.healthy_meals}</p>
+                    <p>• Success Rate: {latestCheck.healthy_plates_details.ratio_percentage.toFixed(1)}%</p>
+                  </div>
+                </details>
+              )}
+            </div>
+
+            {/* Delete Button */}
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => handleDeleteCheck(latestCheck.id)}
+                className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm"
+              >
+                Delete This Check
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Check History */}
+        {checkHistory.length > 1 && (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Check History</h2>
+            <div className="space-y-3">
+              {checkHistory.slice(1).map((check) => (
+                <div key={check.id} className="p-4 border rounded-lg hover:bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-800">
+                        {check.period_start} to {check.period_end}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {new Date(check.check_date).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-2xl font-bold ${getScoreColor(check.overall_score)}`}>
+                        {check.overall_score?.toFixed(1)}%
+                      </p>
+                      <button
+                        onClick={() => handleDeleteCheck(check.id)}
+                        className="text-sm text-red-600 hover:underline mt-1"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -408,30 +418,33 @@ function CompliancePage() {
           </div>
         )}
 
-        {/* Info Box */}
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-          <h3 className="text-sm font-medium text-blue-900 mb-2">💡 How Automated Compliance Works</h3>
-          <ul className="text-sm text-blue-800 space-y-1">
-            <li>• <strong>Water Intake:</strong> Checks if you met your daily water goal</li>
-            <li>• <strong>New Foods:</strong> Counts new foods you tried (10 points each)</li>
-            <li>• <strong>Recommendations Match:</strong> AI analyzes if new foods match nutritionist advice</li>
-            <li>• <strong>Healthy Plates:</strong> Percentage of meals with proper plate ratios (50/30/20)</li>
-            <li>• <strong>Overall Score:</strong> Average of all four checks</li>
-          </ul>
-        </div>
-
-        {/* No Checks Yet */}
-        {!latestCheck && checkHistory.length === 0 && !loading && (
+        {/* No Data State */}
+        {!latestCheck && checkHistory.length === 0 && (
           <div className="bg-white rounded-lg shadow-md p-12 text-center">
-            <span className="text-6xl mb-4 block">🎯</span>
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">
-              No Compliance Checks Yet
-            </h3>
-            <p className="text-gray-600 mb-4">
-              Run your first compliance check to see how well you're following your nutrition goals
+            <span className="text-6xl mb-4 block">📊</span>
+            <p className="text-xl text-gray-600 mb-2">No Compliance Checks Yet</p>
+            <p className="text-gray-500 mb-6">
+              Run your first compliance check to see how you're doing
             </p>
+            <button
+              onClick={() => setShowNewCheckForm(true)}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+            >
+              Run First Check
+            </button>
           </div>
         )}
+
+        {/* Info Card */}
+        <div className="mt-8 p-4 bg-blue-50 rounded-lg">
+          <h3 className="text-sm font-medium text-blue-900 mb-2">💡 About Compliance Checks</h3>
+          <ul className="text-sm text-blue-800 space-y-1">
+            <li>• Checks analyze your adherence to nutrition goals over a specific period</li>
+            <li>• Each metric is scored 0-100%, with an overall average score</li>
+            <li>• Run checks weekly or bi-weekly to track progress over time</li>
+            <li>• Green (80%+) = Excellent, Yellow (60-79%) = Good, Red (&lt;60%) = Needs Improvement</li>
+          </ul>
+        </div>
       </div>
     </div>
   );

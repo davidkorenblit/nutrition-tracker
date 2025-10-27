@@ -36,9 +36,9 @@ class RecommendationsMatchDetails(BaseModel):
 
 
 class HealthyPlatesDetails(BaseModel):
-    """פירוט יחס צלחות בריאות"""
-    total_plates: int
-    healthy_plates: int
+    """פירוט יחס צלחות בריאות - ארוחות שדווחו"""
+    total_reported_meals: int  # שונה מ-total_plates - ארוחות עם 2 צלחות
+    healthy_meals: int  # שונה מ-healthy_plates - ארוחות שהצלחת החופשית שלהן זהה לבריאה
     ratio_percentage: float
 
 

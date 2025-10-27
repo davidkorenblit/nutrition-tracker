@@ -247,6 +247,9 @@ def check_healthy_plates_ratio(
     """
     בדיקה 4: יחס צלחות בריאות
     
+    בודק את הפער הממוצע בין הצלחות החופשיות לצלחת הבריאה (50/30/20).
+    מחשב ציון על בסיס מרחק ממוצע מהיעד.
+    
     Returns:
         tuple: (score 0-100, details dict)
     """
@@ -262,42 +265,57 @@ def check_healthy_plates_ratio(
     
     if not meals:
         return 0.0, {
-            "total_plates": 0,
-            "healthy_plates": 0,
+            "total_reported_meals": 0,
+            "healthy_meals": 0.0,
             "ratio_percentage": 0.0
         }
     
-    # ספירת צלחות בריאות
-    total_plates = 0
-    healthy_plates = 0
+    # רשימת ציוני ארוחות
+    meal_scores = []
     
     for meal in meals:
+        # שלוף את הצלחות של הארוחה
         plates = db.query(Plate).filter(Plate.meal_id == meal.id).all()
-        for plate in plates:
-            total_plates += 1
-            # בדיקה אם זו צלחת בריאה (50% ירקות, 30% חלבון, 20% פחמימות)
-            if (plate.vegetables_percent == 50 and 
-                plate.protein_percent == 30 and 
-                plate.carbs_percent == 20):
-                healthy_plates += 1
+        
+        # רק ארוחות עם בדיוק 2 צלחות (healthy + free) נחשבות כ"מדווחות"
+        if len(plates) != 2:
+            continue
+        
+        # מצא את הצלחת החופשית (plate_type == "free")
+        free_plate = next((p for p in plates if p.plate_type == "free"), None)
+        
+        if free_plate:
+            # חישוב הפער מהצלחת הבריאה (50/30/20)
+            vegetables_gap = abs(50 - free_plate.vegetables_percent)
+            protein_gap = abs(30 - free_plate.protein_percent)
+            carbs_gap = abs(20 - free_plate.carbs_percent)
+            
+            # ממוצע הפערים
+            avg_gap = (vegetables_gap + protein_gap + carbs_gap) / 3
+            
+            # ציון לארוחה זו: 100 - הפער הממוצע
+            # (ככל שהפער קטן יותר, הציון גבוה יותר)
+            meal_score = max(0, 100 - avg_gap)
+            meal_scores.append(meal_score)
     
-    if total_plates == 0:
+    # אם אין ארוחות מדווחות, החזר 0
+    if len(meal_scores) == 0:
         return 0.0, {
-            "total_plates": 0,
-            "healthy_plates": 0,
+            "total_reported_meals": 0,
+            "healthy_meals": 0.0,
             "ratio_percentage": 0.0
         }
     
-    ratio_percentage = (healthy_plates / total_plates) * 100
-    score = ratio_percentage  # הציון הוא פשוט האחוז
+    # חישוב ממוצע הציונים של כל הארוחות
+    average_score = sum(meal_scores) / len(meal_scores)
     
     details = {
-        "total_plates": total_plates,
-        "healthy_plates": healthy_plates,
-        "ratio_percentage": round(ratio_percentage, 2)
+        "total_reported_meals": len(meal_scores),
+        "healthy_meals": round(average_score, 2),  # עכשיו זה ממוצע ציונים ולא ספירה
+        "ratio_percentage": round(average_score, 2)
     }
     
-    return score, details
+    return round(average_score, 2), details
 
 
 def run_compliance_check(

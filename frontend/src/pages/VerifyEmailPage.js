@@ -17,7 +17,7 @@ function VerifyEmailPage() {
     }
 
     // שלח את הקוד לשרת
-    fetch('http://localhost:8000/api/v1/auth/verify-email', {
+    fetch('https://nutrition-tracker-5g4e.onrender.com/api/v1/auth/verify-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code })

@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
 from app.models.water_log import WaterLog
 from datetime import datetime, date
+from sqlalchemy import func
+
 
 def create_water_log(user_id: int, amount_ml: float, db: Session) -> WaterLog:
     water_log = WaterLog(

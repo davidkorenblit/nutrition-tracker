@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // יצירת instance של Axios עם הגדרות בסיס
 const api = axios.create({
-  baseURL: process.env.REACT_APP_BACKEND_URL || 'https://nutrition-tracker-5g4e.onrender.com',
+  baseURL: 'https://nutrition-tracker-5g4e.onrender.com',
   headers: {
     'Content-Type': 'application/json',
   },

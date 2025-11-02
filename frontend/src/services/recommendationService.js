@@ -1,7 +1,7 @@
 import api from './api';
 import axios from 'axios';
 
-const API_URL = 'https://nutrition-tracker-5g4e.onrender.com';
+const API_URL ='http://localhost:8000' ;
 
 const recommendationService = {
   /**
@@ -17,7 +17,7 @@ const recommendationService = {
   const token = localStorage.getItem('access_token');
 
   return axios.post(
-    `http://https://nutrition-tracker-5g4e.onrender.com/api/v1/recommendations/upload?visit_date=${formattedDate}`,
+    `http://localhost:8000/api/v1/recommendations/upload?visit_date=${formattedDate}`,
     formData,
     {
       headers: {

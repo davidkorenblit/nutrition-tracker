@@ -16,15 +16,15 @@ const recommendationService = {
   
   const token = localStorage.getItem('access_token');
 
-  return axios.post(
-    `http://localhost:8000/api/v1/recommendations/upload?visit_date=${formattedDate}`,
-    formData,
-    {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
+ return axios.post(
+  `${process.env.REACT_APP_BACKEND_URL}/api/v1/recommendations/upload?visit_date=${formattedDate}`,
+  formData,
+  {
+    headers: {
+      'Authorization': `Bearer ${token}`
     }
-  ).then(r => r.data);
+  }
+).then(r => r.data);
 },
 
   /**

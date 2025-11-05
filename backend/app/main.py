@@ -29,7 +29,9 @@ app.add_middleware(
     #allow_origins=["*"],
     allow_origins=[
     "http://localhost:3000",
-    "https://resplendent-taiyaki-0840ef.netlify.app"
+    "https://resplendent-taiyaki-0840ef.netlify.app",
+    "https://nutrition-tracker-5g4e.onrender.com"  # הוסף את זה
+
 ],
     allow_credentials=True,
     allow_methods=["*"],

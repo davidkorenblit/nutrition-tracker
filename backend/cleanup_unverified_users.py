@@ -23,7 +23,7 @@ from app.database import get_db
 from app.models.user import User
 from app.models.verification_code import VerificationCode
 import argparse
-
+from app.models import user, verification_code, meal, plate, snack, water_log, hunger_log, weekly_notes, compliance, recommendations
 
 def delete_unverified_users(db: Session, hours: int = 24, dry_run: bool = False) -> dict:
     """

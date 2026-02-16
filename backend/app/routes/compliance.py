@@ -82,13 +82,32 @@ def trigger_compliance_check(
 
 @router.get("/latest", response_model=ComplianceCheckResponse)
 def get_latest_check(
+    client_id: int = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     שליפת בדיקת העמידה האחרונה
     """
-    compliance = get_latest_compliance_check(current_user.id, db)
+    # Determine target user ID
+    if client_id is not None:
+        if current_user.role != "admin":
+            raise HTTPException(
+                status_code=403,
+                detail="Only admins can access other users' data"
+            )
+        target_user_id = client_id
+        # Verify client exists
+        client = db.query(User).filter(User.id == client_id).first()
+        if not client:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Client with id {client_id} not found"
+            )
+    else:
+        target_user_id = current_user.id
+    
+    compliance = get_latest_compliance_check(target_user_id, db)
     
     if not compliance:
         raise HTTPException(
@@ -102,6 +121,7 @@ def get_latest_check(
 @router.get("/history", response_model=List[ComplianceCheckResponse])
 def get_check_history(
     limit: int = 10,
+    client_id: int = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -114,13 +134,32 @@ def get_check_history(
             detail="Limit cannot exceed 50"
         )
     
-    compliances = get_compliance_history(current_user.id, limit, db)
+    # Determine target user ID
+    if client_id is not None:
+        if current_user.role != "admin":
+            raise HTTPException(
+                status_code=403,
+                detail="Only admins can access other users' data"
+            )
+        target_user_id = client_id
+        # Verify client exists
+        client = db.query(User).filter(User.id == client_id).first()
+        if not client:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Client with id {client_id} not found"
+            )
+    else:
+        target_user_id = current_user.id
+    
+    compliances = get_compliance_history(target_user_id, limit, db)
     return compliances
 
 
 @router.get("/summary", response_model=List[ComplianceScoreSummary])
 def get_scores_summary(
     limit: int = 5,
+    client_id: int = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -133,7 +172,25 @@ def get_scores_summary(
             detail="Limit cannot exceed 20"
         )
     
-    compliances = get_compliance_history(current_user.id, limit, db)
+    # Determine target user ID
+    if client_id is not None:
+        if current_user.role != "admin":
+            raise HTTPException(
+                status_code=403,
+                detail="Only admins can access other users' data"
+            )
+        target_user_id = client_id
+        # Verify client exists
+        client = db.query(User).filter(User.id == client_id).first()
+        if not client:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Client with id {client_id} not found"
+            )
+    else:
+        target_user_id = current_user.id
+    
+    compliances = get_compliance_history(target_user_id, limit, db)
     
     summaries = []
     for c in compliances:

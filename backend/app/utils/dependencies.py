@@ -63,3 +63,25 @@ def get_current_user(
         )
     
     return user
+
+
+def get_current_admin_user(current_user: User = Depends(get_current_user)) -> User:
+    """
+    Dependency לקבלת משתמש admin בלבד.
+    
+    Args:
+        current_user: המשתמש המחובר
+    
+    Returns:
+        User: המשתמש המחובר אם הוא admin
+    
+    Raises:
+        HTTPException: אם המשתמש לא admin
+    """
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    
+    return current_user

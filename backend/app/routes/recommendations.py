@@ -73,11 +73,30 @@ async def upload_word_file(
 
 @router.get("/", response_model=List[RecommendationResponse])
 def get_all_recommendations(
+    client_id: int = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    # Determine target user ID
+    if client_id is not None:
+        if current_user.role != "admin":
+            raise HTTPException(
+                status_code=403,
+                detail="Only admins can access other users' data"
+            )
+        target_user_id = client_id
+        # Verify client exists
+        client = db.query(User).filter(User.id == client_id).first()
+        if not client:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Client with id {client_id} not found"
+            )
+    else:
+        target_user_id = current_user.id
+    
     return db.query(NutritionistRecommendations).filter(
-        NutritionistRecommendations.user_id == current_user.id
+        NutritionistRecommendations.user_id == target_user_id
     ).all()
 
 
@@ -87,10 +106,14 @@ def get_recommendation(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    rec = db.query(NutritionistRecommendations).filter(
-        NutritionistRecommendations.id == recommendation_id,
-        NutritionistRecommendations.user_id == current_user.id
-    ).first()
+    query = db.query(NutritionistRecommendations).filter(
+        NutritionistRecommendations.id == recommendation_id
+    )
+    
+    if current_user.role != "admin":
+        query = query.filter(NutritionistRecommendations.user_id == current_user.id)
+    
+    rec = query.first()
     
     if not rec:
         raise HTTPException(

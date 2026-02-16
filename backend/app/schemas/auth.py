@@ -61,6 +61,7 @@ class UserResponse(BaseModel):
     is_active: bool
     is_verified: bool  # NEW: האם המייל מאומת
     created_at: datetime
+    role: str
     
     class Config:
         from_attributes = True
@@ -75,6 +76,7 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     """Schema למידע בתוך ה-token"""
     user_id: Optional[int] = None
+    role: Optional[str] = None
 
 
 class VerifyEmailRequest(BaseModel):

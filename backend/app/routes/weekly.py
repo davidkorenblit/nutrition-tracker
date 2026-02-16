@@ -34,18 +34,37 @@ def create_notes(
 
 @router.get("/", response_model=List[WeeklyNotesResponse])
 def get_all_notes(
-    week_start_date: str = None, 
+    week_start_date: str = None,
+    client_id: int = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    # Determine target user ID
+    if client_id is not None:
+        if current_user.role != "admin":
+            raise HTTPException(
+                status_code=403,
+                detail="Only admins can access other users' data"
+            )
+        target_user_id = client_id
+        # Verify client exists
+        client = db.query(User).filter(User.id == client_id).first()
+        if not client:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Client with id {client_id} not found"
+            )
+    else:
+        target_user_id = current_user.id
+    
     if week_start_date:
         notes = db.query(WeeklyNotes).filter(
             WeeklyNotes.week_start_date == week_start_date,
-            WeeklyNotes.user_id == current_user.id
+            WeeklyNotes.user_id == target_user_id
         ).all()
     else:
         notes = db.query(WeeklyNotes).filter(
-            WeeklyNotes.user_id == current_user.id
+            WeeklyNotes.user_id == target_user_id
         ).all()
     
     return notes
@@ -57,10 +76,14 @@ def get_notes_by_id(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    notes = db.query(WeeklyNotes).filter(
-        WeeklyNotes.id == notes_id,
-        WeeklyNotes.user_id == current_user.id
-    ).first()
+    query = db.query(WeeklyNotes).filter(
+        WeeklyNotes.id == notes_id
+    )
+    
+    if current_user.role != "admin":
+        query = query.filter(WeeklyNotes.user_id == current_user.id)
+    
+    notes = query.first()
     
     if not notes:
         raise HTTPException(

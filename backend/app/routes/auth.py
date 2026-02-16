@@ -8,7 +8,7 @@ from app.schemas.auth import (
 from app.services.auth_service import (
     create_user, login_user, verify_email, resend_verification_email
 )
-from app.utils.dependencies import get_current_user
+from app.utils.dependencies import get_current_user, get_current_admin_user
 from app.models.user import User
 
 router = APIRouter(
@@ -132,3 +132,21 @@ def update_profile(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@router.get("/users", response_model=list[UserResponse])
+def get_all_users(
+    current_admin: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    קבלת רשימת כל המשתמשים הרשומים (ל-admin בלבד).
+    
+    Headers:
+        - Authorization: Bearer <token>
+    
+    Returns:
+        רשימת כל המשתמשים
+    """
+    users = db.query(User).all()
+    return users

@@ -12,6 +12,7 @@ class UserResponse(BaseModel):
     name: str
     daily_water_goal_ml: int
     compliance_check_frequency_days: int
+    role: str
     
     class Config:
         from_attributes = True

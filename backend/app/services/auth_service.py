@@ -241,7 +241,7 @@ def login_user(email: str, password: str, db: Session) -> dict:
     
     # יצור JWT token
     access_token = create_access_token(
-        data={"user_id": user.id, "email": user.email},
+        data={"user_id": user.id, "email": user.email, "role": user.role},
         expires_delta=timedelta(hours=24)
     )
     

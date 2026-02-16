@@ -20,6 +20,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     daily_water_goal_ml = Column(Integer, default=2000, nullable=False) 
     compliance_check_frequency_days = Column(Integer, default=14, nullable=False)
+    role = Column(String, default="client", nullable=False)
     
     
     

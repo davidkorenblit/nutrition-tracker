@@ -7,11 +7,11 @@ def test_register_new_user(client):
         "/api/v1/auth/register",
         json={
             "email": "newuser@example.com",
-            "password": "securepass123",
+            "password": "Secure1!23",
             "name": "New User"
         }
     )
-    assert response.status_code == 200
+    assert response.status_code == 201
     data = response.json()
     assert data["email"] == "newuser@example.com"
     assert data["name"] == "New User"
@@ -24,7 +24,7 @@ def test_register_duplicate_email(client, test_user):
         "/api/v1/auth/register",
         json={
             "email": "test@example.com",  # Already exists
-            "password": "password123",
+            "password": "Password1!",
             "name": "Duplicate User"
         }
     )
@@ -53,7 +53,7 @@ def test_login_wrong_password(client, test_user):
         "/api/v1/auth/login",
         json={
             "email": "test@example.com",
-            "password": "wrongpassword"
+            "password": "WrongPass1!"
         }
     )
     assert response.status_code == 401

@@ -8,14 +8,18 @@ const waterService = {
   },
 
   // קבלת כל רישומי המים לתאריך מסוים
-  getWaterLogs: async (date) => {
-    const response = await api.get(`/api/v1/water/logs?date=${date}`);
+  getWaterLogs: async (date, clientId = null) => {
+    let url = `/api/v1/water/logs?date=${date}`;
+    if (clientId) url += `&client_id=${clientId}`;
+    const response = await api.get(url);
     return response.data;
   },
 
   // קבלת סה"כ מים לתאריך מסוים
-  getTotalWater: async (date) => {
-    const response = await api.get(`/api/v1/water/total?date=${date}`);
+  getTotalWater: async (date, clientId = null) => {
+    let url = `/api/v1/water/total?date=${date}`;
+    if (clientId) url += `&client_id=${clientId}`;
+    const response = await api.get(url);
     return response.data;
   },
 

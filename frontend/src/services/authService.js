@@ -31,6 +31,12 @@ const authService = {
   isAuthenticated: () => {
     return !!localStorage.getItem('access_token');
   },
+
+  // קבלת כל המשתמשים (למנהלים)
+  getAllUsers: async () => {
+    const response = await api.get('/api/v1/auth/users');
+    return response.data;
+  },
 };
 
 export default authService;

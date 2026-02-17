@@ -30,8 +30,10 @@ const recommendationService = {
   /**
    * קבל את כל ההמלצות של המשתמש
    */
-  getAllRecommendations: async () => {
-    const response = await api.get(API_URL);
+  getAllRecommendations: async (clientId = null) => {
+    let url = API_URL;
+    if (clientId) url += `?client_id=${clientId}`;
+    const response = await api.get(url);
     return response.data;
   },
 

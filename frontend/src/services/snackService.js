@@ -8,8 +8,12 @@ const snackService = {
   },
 
   // קבלת חטיפים (עם פילטר תאריך אופציונלי)
-  getSnacks: async (date = null) => {
-    const url = date ? `/api/v1/snacks/?date=${date}` : '/api/v1/snacks/';
+  getSnacks: async (date = null, clientId = null) => {
+    let url = '/api/v1/snacks/';
+    const params = [];
+    if (date) params.push(`date=${date}`);
+    if (clientId) params.push(`client_id=${clientId}`);
+    if (params.length > 0) url += '?' + params.join('&');
     const response = await api.get(url);
     return response.data;
   },

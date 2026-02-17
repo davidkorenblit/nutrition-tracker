@@ -8,10 +8,12 @@ const weeklyService = {
   },
 
   // קבלת כל ההערות השבועיות
-  getAllNotes: async (weekStartDate = null) => {
-    const url = weekStartDate 
-      ? `/api/v1/weekly/?week_start_date=${weekStartDate}` 
-      : '/api/v1/weekly/';
+  getAllNotes: async (weekStartDate = null, clientId = null) => {
+    let url = '/api/v1/weekly/';
+    const params = [];
+    if (weekStartDate) params.push(`week_start_date=${weekStartDate}`);
+    if (clientId) params.push(`client_id=${clientId}`);
+    if (params.length > 0) url += '?' + params.join('&');
     const response = await api.get(url);
     return response.data;
   },

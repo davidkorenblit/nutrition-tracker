@@ -15,32 +15,40 @@ const complianceService = {
   /**
    * Get the latest compliance check
    */
-  async getLatestCheck() {
-    const response = await api.get('/api/v1/compliance/latest');
+  async getLatestCheck(clientId = null) {
+    let url = '/api/v1/compliance/latest';
+    if (clientId) url += `?client_id=${clientId}`;
+    const response = await api.get(url);
     return response.data;
   },
 
   /**
    * Get compliance check history
    */
-  async getCheckHistory(limit = 10) {
-    const response = await api.get(`/api/v1/compliance/history?limit=${limit}`);
+  async getCheckHistory(limit = 10, clientId = null) {
+    let url = `/api/v1/compliance/history?limit=${limit}`;
+    if (clientId) url += `&client_id=${clientId}`;
+    const response = await api.get(url);
     return response.data;
   },
 
   /**
    * Get scores summary (for charts/graphs)
    */
-  async getScoresSummary(limit = 5) {
-    const response = await api.get(`/api/v1/compliance/summary?limit=${limit}`);
+  async getScoresSummary(limit = 5, clientId = null) {
+    let url = `/api/v1/compliance/summary?limit=${limit}`;
+    if (clientId) url += `&client_id=${clientId}`;
+    const response = await api.get(url);
     return response.data;
   },
 
   /**
    * Check if auto-check is due
    */
-  async checkIfDue() {
-    const response = await api.get('/api/v1/compliance/auto-check-due');
+  async checkIfDue(clientId = null) {
+    let url = '/api/v1/compliance/auto-check-due';
+    if (clientId) url += `?client_id=${clientId}`;
+    const response = await api.get(url);
     return response.data;
   },
 

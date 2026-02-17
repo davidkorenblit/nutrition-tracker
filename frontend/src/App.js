@@ -13,6 +13,8 @@ import RecommendationsPage from './pages/RecommendationsPage';
 import CompliancePage from './pages/CompliancePage';
 import WaterTrackingPage from './pages/WaterTrackingPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
+import AdminUsersPage from './pages/admin/AdminUsersPage';
+import AdminClientView from './pages/admin/AdminClientView';
 
 
 // Protected Route Component
@@ -21,6 +23,47 @@ function ProtectedRoute({ children }) {
 
   if (!isAuth) {
     return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
+
+// Admin Route Component
+function AdminRoute({ children }) {
+  const [user, setUser] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userData = await authService.getProfile();
+        setUser(userData);
+      } catch (error) {
+        console.error('Failed to fetch user profile:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (authService.isAuthenticated()) {
+      fetchUser();
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
+  if (loading) {
+    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-lg">Loading...</div>
+    </div>;
+  }
+
+  if (!authService.isAuthenticated()) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user?.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
@@ -91,6 +134,22 @@ function App() {
             <ProtectedRoute>
               <WaterTrackingPage />
             </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminUsersPage />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/user/:userId"
+          element={
+            <AdminRoute>
+              <AdminClientView />
+            </AdminRoute>
           }
         />
 

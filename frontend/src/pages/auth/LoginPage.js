@@ -25,8 +25,14 @@ function LoginPage() {
 
     try {
       await authService.login(formData);
-      // הצלחה - נווט ל-Dashboard
-      navigate('/dashboard');
+      // Get user profile to check role
+      const user = await authService.getProfile();
+      // Redirect based on role
+      if (user.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.response?.data?.detail || 'Login failed. Please try again.');
     } finally {

@@ -1,7 +1,7 @@
 import api from './api';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000/api/v1/recommendations';
+const API_URL = `${process.env.REACT_APP_API_URL || 'https://dailybite-backend.runmydocker-app.com'}/api/v1/recommendations`;
 
 const recommendationService = {
   /**
@@ -17,7 +17,7 @@ const recommendationService = {
   const token = localStorage.getItem('access_token');
 
   return axios.post(
-    `http://localhost:8000/api/v1/recommendations/upload?visit_date=${formattedDate}`,
+    `${process.env.REACT_APP_API_URL || 'https://dailybite-backend.runmydocker-app.com'}/api/v1/recommendations/upload?visit_date=${formattedDate}`,
     formData,
     {
       headers: {

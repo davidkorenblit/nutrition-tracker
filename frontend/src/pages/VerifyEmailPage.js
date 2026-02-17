@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
 function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
@@ -17,19 +18,7 @@ function VerifyEmailPage() {
     }
 
     // שלח את הקוד לשרת
-    fetch('http://localhost:8000/api/v1/auth/verify-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code })
-    })
-      .then(res => {
-        if (!res.ok) {
-          return res.json().then(data => {
-            throw new Error(data.detail || 'Verification failed');
-          });
-        }
-        return res.json();
-      })
+    api.post('/api/v1/auth/verify-email', { code })
       .then(data => {
         setStatus('success');
         setMessage(data.message || 'Email verified successfully!');

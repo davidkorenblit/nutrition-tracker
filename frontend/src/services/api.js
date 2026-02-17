@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // יצירת instance של Axios עם הגדרות בסיס
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000',
+  baseURL: process.env.REACT_APP_API_URL || 'https://dailybite-backend.runmydocker-app.com',
   headers: {
     'Content-Type': 'application/json',
   },

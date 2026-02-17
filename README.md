@@ -39,7 +39,7 @@ The application is built to run in a containerized environment, ensuring consist
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/your-username/dailybite.git](https://github.com/your-username/dailybite.git)
+    git clone [https://github.com/davidkorenblit/dailybite.git](https://github.com/davidkorenblit/dailybite.git)
     cd dailybite
     ```
 

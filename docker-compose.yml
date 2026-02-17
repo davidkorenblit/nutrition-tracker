@@ -10,7 +10,10 @@ services:
       - ./backend/nutrition_tracker.db:/app/nutrition_tracker.db
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        - REACT_APP_API_URL=http://localhost:8002
     ports:
       - "3000:80"
     environment:

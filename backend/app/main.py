@@ -103,3 +103,18 @@ def read_root():
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
+
+@app.on_event("startup")
+async def make_me_admin():
+    from app.database import SessionLocal  # וודא שזה השם ב-database.py
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == "dycoren18@gmail.com").first()
+        if user:
+            user.is_admin = True
+            db.commit()
+            print("!!! ADMIN STATUS UPDATED FOR dycoren18@gmail.com !!!")
+    except Exception as e:
+        print(f"Admin update failed: {e}")
+    finally:
+        db.close()

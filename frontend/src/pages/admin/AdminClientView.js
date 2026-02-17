@@ -9,42 +9,47 @@ function AdminClientView() {
   const navigate = useNavigate();
   const { userId } = useParams();
   const [client, setClient] = useState(null);
-  const [meals, setMeals] = useState([]);
-  const [snacks, setSnacks] = useState([]);
-  const [totalWater, setTotalWater] = useState(0);
+  const [dailyData, setDailyData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const today = new Date().toISOString().split('T')[0];
-
-        // Get all users to find the client name
+        // Get client profile
         const users = await authService.getAllUsers();
         const clientData = users.find(u => u.id === parseInt(userId));
         setClient(clientData);
 
-        // Load client data
-        const [mealsData, snacksData, waterData] = await Promise.all([
-          mealService.getMeals(today, userId),
-          snackService.getSnacks(today, userId),
-          waterService.getTotalWater(today, userId)
-        ]);
+        // Calculate last 7 days
+        const dates = [];
+        for (let i = 6; i >= 0; i--) {
+          const date = new Date();
+          date.setDate(date.getDate() - i);
+          dates.push(date.toISOString().split('T')[0]);
+        }
 
-        console.log('📊 Client Meals loaded:', mealsData);
-        mealsData.forEach(meal => {
-          console.log(`Meal ${meal.meal_type}:`, {
-            id: meal.id,
-            plates: meal.plates,
-            plates_count: meal.plates?.length || 0
-          });
+        // Fetch data for each day
+        const dataPromises = dates.map(async (date) => {
+          const [meals, snacks, water] = await Promise.all([
+            mealService.getMeals(date, userId),
+            snackService.getSnacks(date, userId),
+            waterService.getTotalWater(date, userId)
+          ]);
+
+          return {
+            date,
+            meals,
+            snacks,
+            waterTotal: water.total_ml || 0
+          };
         });
 
-        setMeals(mealsData);
-        setSnacks(snacksData);
-        setTotalWater(waterData.total_ml);
+        const allData = await Promise.all(dataPromises);
+        setDailyData(allData);
       } catch (error) {
         console.error('Failed to load client data:', error);
+        setError('Failed to load patient data');
       } finally {
         setLoading(false);
       }
@@ -53,195 +58,169 @@ function AdminClientView() {
     loadData();
   }, [userId]);
 
-  const completedMeals = meals.filter(m => m.plates && m.plates.length > 1).length;
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const getMealTime = (meal) => {
+    const timeMap = {
+      breakfast: '08:00',
+      lunch: '12:00',
+      dinner: '18:00'
+    };
+    return timeMap[meal.meal_type] || '12:00';
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <p className="text-xl text-gray-600">Loading client data...</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-xl text-gray-600">Loading patient report...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-red-600 text-lg">{error}</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {/* Admin Header */}
-        <div className="bg-red-100 rounded-lg shadow-md p-6 mb-6 border-l-4 border-red-500">
-          <div className="flex justify-between items-center">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-6xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        {/* Page Header */}
+        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+          <div className="flex justify-between items-start">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                Admin View: {client?.name || 'Unknown User'}
+                Patient Report: {client?.name || 'Unknown Patient'}
               </h1>
               <p className="text-gray-600 mt-1">
-                Viewing data for: {client?.email}
-              </p>
-              <p className="text-sm text-gray-500 mt-1">
-                {new Date().toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
+                Last 7 Days Activity Report
               </p>
             </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => navigate('/admin')}
-                className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
-              >
-                ← Back to Users
-              </button>
-              <button
-                onClick={() => {
-                  authService.logout();
-                  navigate('/login');
-                }}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-              >
-                Logout
-              </button>
-            </div>
+            <button
+              onClick={() => navigate('/admin')}
+              className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+            >
+              ← Back to Users
+            </button>
           </div>
         </div>
 
-        {/* Daily Summary */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Daily Summary</h2>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-blue-50 p-4 rounded">
-              <p className="text-sm text-gray-600">Meals Completed</p>
-              <p className="text-3xl font-bold text-blue-600">{completedMeals}/3</p>
-            </div>
-            <div className="bg-green-50 p-4 rounded">
-              <p className="text-sm text-gray-600">Snacks Today</p>
-              <p className="text-3xl font-bold text-green-600">{snacks.length}</p>
-            </div>
-            <div className="bg-cyan-50 p-4 rounded">
-              <p className="text-sm text-gray-600">Water Today</p>
-              <p className="text-3xl font-bold text-cyan-600">{totalWater}</p>
-              <p className="text-xs text-gray-500">ml</p>
-            </div>
-          </div>
-          <div className="mt-4">
-            <div className="w-full bg-gray-200 rounded-full h-4">
-              <div
-                className="bg-blue-600 h-4 rounded-full transition-all"
-                style={{ width: `${(completedMeals / 3) * 100}%` }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Today's Meals */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Today's Meals</h2>
-          <div className="space-y-4">
-            {meals.map(meal => (
-              <div key={meal.id} className="flex items-center justify-between p-4 border rounded">
-                <div className="flex items-center gap-4">
-                  <span className="text-2xl">
-                    {meal.meal_type === 'breakfast' && '🍳'}
-                    {meal.meal_type === 'lunch' && '🍽️'}
-                    {meal.meal_type === 'dinner' && '🌙'}
+        {/* Daily Activity Timeline */}
+        <div className="space-y-6">
+          {dailyData.map((day) => (
+            <div key={day.date} className="bg-white rounded-lg shadow-sm border p-6">
+              {/* Day Header */}
+              <div className="flex justify-between items-center mb-4 pb-3 border-b">
+                <h2 className="text-xl font-semibold text-gray-800">
+                  {formatDate(day.date)}
+                </h2>
+                <div className="flex gap-4">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                    {day.meals.length} Meals
                   </span>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-cyan-100 text-cyan-800">
+                    {day.waterTotal}ml Water
+                  </span>
+                </div>
+              </div>
+
+              {/* Day Content */}
+              {day.meals.length === 0 && day.snacks.length === 0 && day.waterTotal === 0 ? (
+                <p className="text-gray-400 text-center py-8 italic">No activity recorded for this day</p>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Meals Column */}
                   <div>
-                    <h3 className="font-semibold text-gray-800 capitalize">
-                      {meal.meal_type}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {meal.plates && meal.plates.length > 1 ? (
-                        <span className="text-green-600 font-medium">✓ Completed</span>
-                      ) : (
-                        <span className="text-yellow-600 font-medium">⏳ Pending</span>
-                      )}
-                    </p>
+                    <h3 className="text-lg font-medium text-gray-800 mb-3">Meals</h3>
+                    {day.meals.length === 0 ? (
+                      <p className="text-gray-400 italic">No meals recorded</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {day.meals.map((meal) => (
+                          <div key={meal.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded">
+                            <div className="flex-shrink-0">
+                              <span className="text-2xl">
+                                {meal.meal_type === 'breakfast' && '🍳'}
+                                {meal.meal_type === 'lunch' && '🍽️'}
+                                {meal.meal_type === 'dinner' && '🌙'}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-semibold text-gray-800">
+                                  {getMealTime(meal)}
+                                </span>
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-700 capitalize">
+                                  {meal.meal_type}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-600">
+                                {meal.plates && meal.plates.length > 1 ? (
+                                  <span className="text-green-600 font-medium">✓ Completed</span>
+                                ) : (
+                                  <span className="text-yellow-600 font-medium">⏳ Pending</span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Snacks & Water Column */}
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-800 mb-3">Snacks & Water</h3>
+                    <div className="space-y-4">
+                      {/* Water Progress */}
+                      <div>
+                        <div className="flex justify-between text-sm text-gray-600 mb-1">
+                          <span>Water Intake</span>
+                          <span>{day.waterTotal}ml / 2500ml</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-cyan-600 h-2 rounded-full transition-all"
+                            style={{ width: `${Math.min((day.waterTotal / 2500) * 100, 100)}%` }}
+                          ></div>
+                        </div>
+                      </div>
+
+                      {/* Snacks */}
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Snacks</h4>
+                        {day.snacks.length === 0 ? (
+                          <p className="text-gray-400 italic text-sm">No snacks recorded</p>
+                        ) : (
+                          <ul className="space-y-2">
+                            {day.snacks.map((snack) => (
+                              <li key={snack.id} className="flex justify-between text-sm">
+                                <span className="text-gray-800">{snack.description}</span>
+                                <span className="text-gray-500">
+                                  {new Date(snack.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-                {/* Read-only - no action buttons */}
-              </div>
-            ))}
-          </div>
+              )}
+            </div>
+          ))}
         </div>
-
-        {/* Snacks */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-800">Snacks</h2>
-            {/* Read-only - no add button */}
-          </div>
-
-          {snacks.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No snacks logged today</p>
-          ) : (
-            <div className="space-y-3">
-              {snacks.map(snack => (
-                <div key={snack.id} className="flex items-center justify-between p-3 border rounded">
-                  <div>
-                    <p className="text-gray-800">{snack.description}</p>
-                    <p className="text-sm text-gray-500">
-                      {new Date(snack.timestamp).toLocaleTimeString()}
-                    </p>
-                  </div>
-                  {/* Read-only - no delete button */}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Quick Navigation - Read Only */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Client Data Overview</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-
-            {/* Water Tracking */}
-            <div className="p-6 border-2 border-cyan-200 rounded-lg bg-cyan-50">
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-3xl">💧</span>
-                <h3 className="text-lg font-semibold text-gray-800">Water Tracking</h3>
-              </div>
-              <p className="text-sm text-gray-600">
-                Daily water intake tracking
-              </p>
-            </div>
-
-            {/* Weekly Review */}
-            <div className="p-6 border-2 border-purple-200 rounded-lg bg-purple-50">
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-3xl">📅</span>
-                <h3 className="text-lg font-semibold text-gray-800">Weekly Review</h3>
-              </div>
-              <p className="text-sm text-gray-600">
-                Weekly progress and new foods
-              </p>
-            </div>
-
-            {/* Recommendations */}
-            <div className="p-6 border-2 border-orange-200 rounded-lg bg-orange-50">
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-3xl">📋</span>
-                <h3 className="text-lg font-semibold text-gray-800">Recommendations</h3>
-              </div>
-              <p className="text-sm text-gray-600">
-                Nutritionist recommendations
-              </p>
-            </div>
-
-            {/* Compliance */}
-            <div className="p-6 border-2 border-teal-200 rounded-lg bg-teal-50">
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-3xl">📊</span>
-                <h3 className="text-lg font-semibold text-gray-800">Compliance</h3>
-              </div>
-              <p className="text-sm text-gray-600">
-                Compliance reports and analytics
-              </p>
-            </div>
-
-          </div>
-        </div>
-
       </div>
     </div>
   );

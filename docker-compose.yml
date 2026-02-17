@@ -1,0 +1,19 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8002:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./nutrition_tracker.db
+      - SECRET_KEY=your-secret-key-here
+    volumes:
+      - ./backend/nutrition_tracker.db:/app/nutrition_tracker.db
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8002
+    depends_on:
+      - backend

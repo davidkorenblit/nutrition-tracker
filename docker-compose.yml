@@ -1,22 +1,22 @@
+version: '3.8'
 services:
   backend:
-    build: ./backend
+    image: dycoren18/nutrition-backend:latest
     ports:
-      - "8002:8000"
+      - "8000:8000"
     environment:
-      - DATABASE_URL=sqlite:///./nutrition_tracker.db
-      - SECRET_KEY=your-secret-key-here
-    volumes:
-      - ./backend/nutrition_tracker.db:/app/nutrition_tracker.db
+      - DATABASE_URL=${DATABASE_URL}
+      - SECRET_KEY=${SECRET_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - SMTP_EMAIL=${SMTP_EMAIL}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - FRONTEND_URL=${FRONTEND_URL}
 
   frontend:
-    build:
-      context: ./frontend
-      args:
-        - REACT_APP_API_URL=http://localhost:8002
+    image: dycoren18/nutrition-frontend:latest
     ports:
-      - "3000:80"
+      - "80:80"
     environment:
-      - REACT_APP_API_URL=http://localhost:8002
+      - REACT_APP_API_URL=https://dailybite-backend.runmydocker-app.com
     depends_on:
       - backend

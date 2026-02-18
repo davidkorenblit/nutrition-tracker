@@ -11,7 +11,7 @@ SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 SMTP_EMAIL = os.getenv("SMTP_EMAIL")  # המייל ממנו תשלח
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")  # App Password של Gmail
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")  # כתובת הפרונטאנד
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://dailybite-frontend.runmydocker-app.com") # כתובת הפרונטאנד
 
 
 def send_verification_email(to_email: str, verification_code: str) -> bool:

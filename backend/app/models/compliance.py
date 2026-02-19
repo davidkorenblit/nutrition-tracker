@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, JSON
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
+from sqlalchemy.dialects.postgresql import JSONB
 from datetime import datetime
 from app.database import Base
 
@@ -17,16 +18,17 @@ class Compliance(Base):
     
     # 4 בדיקות - כל אחת עם ציון ופירוט
     water_intake_score = Column(Float, nullable=True)  # 0-100
-    water_intake_details = Column(JSON, nullable=True)  # {daily_avg_ml, goal_ml, days_met_goal, etc}
+    # JSONB used for performance and Postgres compatibility
+    water_intake_details = Column(JSONB, nullable=True)  # {daily_avg_ml, goal_ml, days_met_goal, etc}
     
     new_foods_score = Column(Float, nullable=True)  # 0-100
-    new_foods_details = Column(JSON, nullable=True)  # [{food_name, difficulty, date}, ...]
+    new_foods_details = Column(JSONB, nullable=True)  # [{food_name, difficulty, date}, ...]
     
     recommendations_match_score = Column(Float, nullable=True)  # 0-100 (from LLM)
-    recommendations_match_details = Column(JSON, nullable=True)  # {analysis, matched_items, unmatched_items}
+    recommendations_match_details = Column(JSONB, nullable=True)  # {analysis, matched_items, unmatched_items}
     
     healthy_plates_ratio_score = Column(Float, nullable=True)  # 0-100
-    healthy_plates_details = Column(JSON, nullable=True)  # {total_plates, healthy_plates, ratio}
+    healthy_plates_details = Column(JSONB, nullable=True)  # {total_plates, healthy_plates, ratio}
     
     # ציון כולל
     overall_score = Column(Float, nullable=True)  # ממוצע 4 הבדיקות

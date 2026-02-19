@@ -18,13 +18,20 @@ from app.utils.exceptions import ValidationError, NotFoundError, FileUploadError
 from app.routes import water
 
 
-Base.metadata.create_all(bind=engine)
+# metadata creation moved to startup event for cloud DB compatibility
 
 app = FastAPI()
 
+# CORS configuration reading from environment
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url:
+    cors_origins = [frontend_url]
+else:
+    cors_origins = ["*"]  # fallback during local development
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -105,7 +112,15 @@ def health_check():
     return {"status": "healthy"}
 
 @app.on_event("startup")
-async def make_me_admin():
+async def startup_tasks():
+    # create tables on startup to support cloud databases
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("Database tables created/verified")
+    except Exception as e:
+        print(f"Error creating tables on startup: {e}")
+
+    # ensure initial admin user
     from app.database import SessionLocal  # וודא שזה השם ב-database.py
     db = SessionLocal()
     try:

@@ -10,6 +10,10 @@ from app.services.auth_service import (
 )
 from app.utils.dependencies import get_current_user, get_current_admin_user
 from app.models.user import User
+import logging
+import traceback
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/v1/auth",
@@ -92,8 +96,22 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
     Note:
         המשתמש חייב לאמת את המייל שלו לפני ההתחברות!
     """
-    token = login_user(credentials.email, credentials.password, db)
-    return token
+    try:
+        logger.info(f"Login attempt for email: {credentials.email}")
+        token = login_user(credentials.email, credentials.password, db)
+        logger.info(f"Login successful for email: {credentials.email}")
+        return token
+    except HTTPException as http_exc:
+        # Re-raise HTTP exceptions (validation errors, not found, etc)
+        logger.warning(f"Login validation error for {credentials.email}: {http_exc.detail}")
+        raise
+    except Exception as e:
+        # Log unexpected errors with full traceback
+        logger.error(f"Unexpected error during login for {credentials.email}:", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred during login. Please try again."
+        )
 
 # that can be a great start for the admin feture
 @router.get("/me", response_model=UserResponse)

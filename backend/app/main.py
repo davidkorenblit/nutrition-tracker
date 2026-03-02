@@ -4,6 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
+import logging
 from app.database import engine, Base
 from app.models.meal import Meal
 from app.models.plate import Plate
@@ -18,20 +19,34 @@ from app.utils.exceptions import ValidationError, NotFoundError, FileUploadError
 from app.routes import water
 
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 # metadata creation moved to startup event for cloud DB compatibility
 
 app = FastAPI()
 
-# CORS configuration reading from environment
-frontend_url = os.getenv("FRONTEND_URL")
-if frontend_url:
-    cors_origins = [frontend_url]
-else:
-    cors_origins = ["*"]  # fallback during local development
+# ⚠️ CORS CONFIGURATION - ENVIRONMENT-AWARE
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
+# Detect environment: development if localhost/127.0.0.1 in URL, otherwise production
+ENVIRON = "development" if ("localhost" in FRONTEND_URL or "127.0.0.1" in FRONTEND_URL) else "production"
+
+# Build CORS origins list dynamically
+CORS_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
+if FRONTEND_URL and FRONTEND_URL not in CORS_ORIGINS:
+    CORS_ORIGINS.append(FRONTEND_URL)
+
+logger.info(f"🌐 CORS Origins configured: {CORS_ORIGINS}")
+logger.info(f"🔧 Running in {ENVIRON.upper()} mode")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -81,13 +96,15 @@ async def duplicate_handler(request: Request, exc: DuplicateError):
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
+    # Log the full traceback for debugging
+    logger.error(f"Unhandled exception: {type(exc).__name__}", exc_info=True)
     return JSONResponse(
         status_code=500,
         content={"error": "Internal Server Error", "message": str(exc)}
     )
 
-# Static Files
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+# Static Files - Moved to Cloud Storage (Supabase)
+# app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Routers
 app.include_router(meals.router)
@@ -113,12 +130,25 @@ def health_check():
 
 @app.on_event("startup")
 async def startup_tasks():
+    # Environment & Configuration Verification
+    supabase_configured = bool(os.getenv('SUPABASE_URL') and os.getenv('SUPABASE_KEY'))
+    logger.info("=" * 60)
+    logger.info("🚀 STARTUP VERIFICATION")
+    logger.info("=" * 60)
+    logger.info(f"📍 Environment: {ENVIRON.upper()}")
+    logger.info(f"🌐 Frontend URL: {FRONTEND_URL}")
+    logger.info(f"🔐 Database configured: {bool(os.getenv('DATABASE_URL'))}")
+    logger.info(f"☁️  Supabase configured: {supabase_configured}")
+    logger.info(f"📧 SMTP configured: {bool(os.getenv('SMTP_EMAIL'))}")
+    logger.info(f"🔑 JWT Secret configured: {bool(os.getenv('SECRET_KEY'))}")
+    logger.info("=" * 60)
+    
     # create tables on startup to support cloud databases
     try:
         Base.metadata.create_all(bind=engine)
-        print("Database tables created/verified")
+        logger.info("✅ Database tables created/verified")
     except Exception as e:
-        print(f"Error creating tables on startup: {e}")
+        logger.error(f"❌ Error creating tables on startup: {e}")
 
     # ensure initial admin user
     from app.database import SessionLocal  # וודא שזה השם ב-database.py
@@ -128,8 +158,8 @@ async def startup_tasks():
         if user:
             user.is_admin = True
             db.commit()
-            print("!!! ADMIN STATUS UPDATED FOR dycoren18@gmail.com !!!")
+            logger.info("✅ Admin status verified for dycoren18@gmail.com")
     except Exception as e:
-        print(f"Admin update failed: {e}")
+        logger.error(f"❌ Admin update failed: {e}")
     finally:
         db.close()

@@ -7,6 +7,9 @@ from app.utils.security import get_password_hash, verify_password, create_access
 from app.services.email_service import send_verification_email
 from datetime import timedelta, datetime
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def create_user(user_data: UserCreate, db: Session) -> User:
@@ -60,7 +63,7 @@ def create_user(user_data: UserCreate, db: Session) -> User:
     email_sent = send_verification_email(new_user.email, verification_code)
     if not email_sent:
         # אם שליחת המייל נכשלה, עדיין נחזיר את המשתמש אבל נזרוק אזהרה
-        print(f"Warning: Failed to send verification email to {new_user.email}")
+        logger.warning(f"Failed to send verification email to {new_user.email}")
     
     return new_user
 
@@ -189,39 +192,64 @@ def authenticate_user(email: str, password: str, db: Session) -> User:
     Raises:
         HTTPException: אם האימות נכשל
     """
-    # מצא משתמש לפי email
-    user = db.query(User).filter(User.email == email).first()
-    
-    if not user:
+    try:
+        # מצא משתמש לפי email
+        logger.debug(f"Querying database for user: {email}")
+        user = db.query(User).filter(User.email == email).first()
+        
+        if not user:
+            logger.warning(f"Login attempt with non-existent email: {email}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect email or password",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+        
+        # בדוק סיסמה
+        try:
+            password_valid = verify_password(password, user.hashed_password)
+        except Exception as e:
+            logger.error(f"Error verifying password for {email}: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error during password verification"
+            )
+        
+        if not password_valid:
+            logger.warning(f"Invalid password attempt for email: {email}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect email or password",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+        
+        # בדוק שהמשתמש פעיל
+        if not user.is_active:
+            logger.warning(f"Login attempt for inactive user: {email}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Inactive user"
+            )
+        
+        # NEW: בדוק שהמייל מאומת
+        if not user.is_verified:
+            logger.warning(f"Login attempt for unverified email: {email}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Email not verified. Please check your email for verification link."
+            )
+        
+        logger.info(f"User authenticated successfully: {email}")
+        return user
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error during authentication for {email}: {str(e)}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"}
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred during authentication"
         )
-    
-    # בדוק סיסמה
-    if not verify_password(password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"}
-        )
-    
-    # בדוק שהמשתמש פעיל
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive user"
-        )
-    
-    # NEW: בדוק שהמייל מאומת
-    if not user.is_verified:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Email not verified. Please check your email for verification link."
-        )
-    
-    return user
 
 
 def login_user(email: str, password: str, db: Session) -> dict:
@@ -236,16 +264,36 @@ def login_user(email: str, password: str, db: Session) -> dict:
     Returns:
         dict: {"access_token": str, "token_type": "bearer"}
     """
-    # אמת משתמש
-    user = authenticate_user(email, password, db)
-    
-    # יצור JWT token
-    access_token = create_access_token(
-        data={"user_id": user.id, "email": user.email, "role": user.role},
-        expires_delta=timedelta(hours=24)
-    )
-    
-    return {
-        "access_token": access_token,
-        "token_type": "bearer"
-    }
+    try:
+        # אמת משתמש
+        logger.debug(f"Starting authentication for email: {email}")
+        user = authenticate_user(email, password, db)
+        
+        # יצור JWT token
+        try:
+            logger.debug(f"Creating JWT token for user: {user.id}")
+            access_token = create_access_token(
+                data={"user_id": user.id, "email": user.email, "role": user.role},
+                expires_delta=timedelta(hours=24)
+            )
+            logger.info(f"JWT token created successfully for user: {user.id}")
+        except Exception as e:
+            logger.error(f"Error creating JWT token for {email}: {str(e)}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error generating authentication token"
+            )
+        
+        return {
+            "access_token": access_token,
+            "token_type": "bearer"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in login_user for {email}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred during login"
+        )

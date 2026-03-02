@@ -1,11 +1,28 @@
 import os
 import uuid
 from fastapi import UploadFile, HTTPException
-from pathlib import Path
+from supabase import create_client, Client
+import logging
 
-UPLOAD_DIR = Path("uploads")
+logger = logging.getLogger(__name__)
+
+# Supabase Configuration
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+# Initialize Supabase client if credentials are available
+supabase_client: Client = None
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        logger.info("✅ Supabase client initialized for media storage")
+    except Exception as e:
+        logger.warning(f"⚠️  Failed to initialize Supabase: {e}")
+
+BUCKET_NAME = os.getenv("MEDIA_BUCKET_NAME", "media")
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+
 
 def validate_image(file: UploadFile) -> bool:
     """בדיקת תקינות תמונה"""
@@ -22,15 +39,17 @@ def validate_image(file: UploadFile) -> bool:
 
 
 async def save_upload_file(file: UploadFile) -> str:
-    """שמירת קובץ והחזרת URL"""
+    """שמירת תמונה ב-Supabase והחזרת public URL"""
     validate_image(file)
     
-    # צור שם ייחודי
-    file_ext = file.filename.split(".")[-1]
-    unique_filename = f"{uuid.uuid4()}.{file_ext}"
-    file_path = UPLOAD_DIR / unique_filename
+    # בדוק אם Supabase מוגדר
+    if not supabase_client:
+        raise HTTPException(
+            status_code=500,
+            detail="Cloud storage (Supabase) is not configured. Please set SUPABASE_URL and SUPABASE_KEY."
+        )
     
-    # שמור את הקובץ
+    # קרא את תוכן הקובץ
     content = await file.read()
     
     # בדוק גודל
@@ -40,17 +59,63 @@ async def save_upload_file(file: UploadFile) -> str:
             detail=f"File too large. Max size: {MAX_FILE_SIZE / 1024 / 1024}MB"
         )
     
-    with open(file_path, "wb") as f:
-        f.write(content)
+    # צור שם ייחודי
+    file_ext = file.filename.split(".")[-1]
+    unique_filename = f"{uuid.uuid4()}.{file_ext}"
     
-    # החזר URL
-    return f"/uploads/{unique_filename}"
+    try:
+        # Determine content type
+        content_type_map = {
+            "jpg": "image/jpeg",
+            "jpeg": "image/jpeg",
+            "png": "image/png",
+            "gif": "image/gif"
+        }
+        content_type = content_type_map.get(file_ext, "application/octet-stream")
+        
+        # Upload to Supabase
+        response = supabase_client.storage.from_(BUCKET_NAME).upload(
+            path=unique_filename,
+            file=content,
+            file_options={"content-type": content_type}
+        )
+        
+        # Build public URL
+        public_url = f"{SUPABASE_URL}/storage/v1/object/public/{BUCKET_NAME}/{unique_filename}"
+        logger.info(f"✅ Image uploaded to Supabase: {unique_filename}")
+        
+        return public_url
+    
+    except Exception as e:
+        logger.error(f"❌ Failed to upload image to Supabase: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to upload image to cloud storage: {str(e)}"
+        )
 
 
-def delete_upload_file(filename: str) -> bool:
-    """מחיקת קובץ"""
-    file_path = UPLOAD_DIR / filename
-    if file_path.exists():
-        os.remove(file_path)
+def delete_upload_file(file_url: str) -> bool:
+    """
+    מחיקת תמונה מ-Supabase.
+    
+    Args:
+        file_url: Public URL של התמונה
+    
+    Returns:
+        bool: True אם נמחקה בהצלחה, False אחרת
+    """
+    if not supabase_client:
+        logger.warning("⚠️  Supabase not configured, cannot delete file")
+        return False
+    
+    try:
+        # Extract filename from URL
+        filename = file_url.split('/')[-1]
+        
+        # Delete from Supabase
+        supabase_client.storage.from_(BUCKET_NAME).remove([filename])
+        logger.info(f"✅ Image deleted from Supabase: {filename}")
         return True
-    return False
+    except Exception as e:
+        logger.error(f"❌ Failed to delete image from Supabase: {e}")
+        return False

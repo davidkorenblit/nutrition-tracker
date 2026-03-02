@@ -2,10 +2,11 @@ import axios from 'axios';
 
 // יצירת instance של Axios עם הגדרות בסיס
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'https://dailybite-backend.runmydocker-app.com',
+  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000',
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Enable sending credentials (cookies, auth headers) with requests
 });
 
 // Interceptor - מוסיף אוטומטית את ה-token לכל בקשה
@@ -26,10 +27,25 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // אם ה-token לא תקף - נקה אותו והפנה להתחברות
-      localStorage.removeItem('access_token');
-      window.location.href = '/login';
+    // Log error details for debugging
+    if (error.response) {
+      // Server responded with error status
+      console.error(`API Error [${error.response.status}]:`, error.response.data);
+      
+      if (error.response.status === 401) {
+        // Unauthorized - token expired or invalid
+        localStorage.removeItem('access_token');
+        window.location.href = '/login';
+      } else if (error.response.status === 500) {
+        // Server error - log for debugging
+        console.error('Server Error (500):', error.response.data);
+      }
+    } else if (error.request) {
+      // Request made but no response received
+      console.error('No response from server:', error.request);
+    } else {
+      // Error in request setup
+      console.error('Error:', error.message);
     }
     return Promise.reject(error);
   }

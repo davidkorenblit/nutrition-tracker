@@ -4,7 +4,6 @@ from app.database import get_db
 from app.models.nutritionist_recommendations import NutritionistRecommendations
 from app.models.user import User
 from app.schemas.recommendation import (
-    RecommendationUpload,
     RecommendationResponse,
     RecommendationTagUpdate
 )
@@ -32,25 +31,15 @@ async def upload_word_file(
 ):
     try:
         # 1. שמור את הקובץ
-        print(f"📁 Saving file: {file.filename}")
         file_path = await save_word_file(file)
-        print(f"✓ File saved to: {file_path}")
         
         # 2. חלץ טקסט
-        print(f"📖 Parsing text from: {file_path}")
         raw_text = parse_word_file(file_path)
-        print(f"✓ Raw text extracted (length: {len(raw_text)} chars)")
-        print(f"📄 First 200 chars: {raw_text[:200]}")
         
-    
-        # 4. המר לרשימה
-        print(f"📋 Parsing recommendations to list...")
+        # 3. המר לרשימה
         recommendations_list = extract_recommendations_with_llm(raw_text)
-        print(f"✓ Parsed {len(recommendations_list)} recommendations")
-        print(f"📊 List: {recommendations_list}")
         
-        # 5. שמור ב-DB
-        print(f"💾 Saving to database...")
+        # 4. שמור ב-DB
         db_recommendation = NutritionistRecommendations(
             user_id=current_user.id,
             visit_date=visit_date,
@@ -62,12 +51,10 @@ async def upload_word_file(
         db.add(db_recommendation)
         db.commit()
         db.refresh(db_recommendation)
-        print(f"✓ Successfully saved to database with id: {db_recommendation.id}")
         
         return db_recommendation
     
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
         raise
 
 

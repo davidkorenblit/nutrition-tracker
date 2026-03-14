@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from app.database import Base
 
 class HungerLog(Base):
@@ -10,7 +10,7 @@ class HungerLog(Base):
     meal_id = Column(Integer, ForeignKey("meals.id"), nullable=False)
     log_type = Column(String, nullable=False)  # "before", "during", "after"
     hunger_level = Column(Integer, nullable=False)  # 1-10
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     # קשר חזרה ל-Meal
     meal = relationship("Meal", back_populates="hunger_logs")

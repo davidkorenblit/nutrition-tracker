@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from app.models.hunger_log import HungerLog
 from fastapi import HTTPException
-from datetime import datetime
+from datetime import datetime, timezone
 
 def create_hunger_log(
     meal_id: int,
@@ -42,7 +42,7 @@ def create_hunger_log(
         meal_id=meal_id,
         log_type=log_type,
         hunger_level=hunger_level,
-        timestamp=datetime.utcnow()
+        timestamp=datetime.now(timezone.utc)
     )
     
     db.add(hunger_log)

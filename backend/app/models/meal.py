@@ -1,6 +1,6 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey  
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from app.database import Base
 
 class Meal(Base):
@@ -10,7 +10,7 @@ class Meal(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)  
     meal_type = Column(String, nullable=False)
     date = Column(String, nullable=False)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     photo_url = Column(String, nullable=True)  
     notes = Column(String, nullable=True)
 

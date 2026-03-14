@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey  # הוסף ForeignKey
 from sqlalchemy.orm import relationship  # אם אין
-from datetime import datetime
+from datetime import datetime, timezone
 from app.database import Base
 
 class Snack(Base):
@@ -10,7 +10,7 @@ class Snack(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     date = Column(String, nullable=False)
     description = Column(String)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     #relationship
     user = relationship("User", back_populates="snacks")

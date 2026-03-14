@@ -15,7 +15,7 @@ from app.services.compliance_service import (
 )
 from app.utils.dependencies import get_current_user
 from typing import List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 router = APIRouter(
     prefix="/api/v1/compliance",
@@ -252,7 +252,7 @@ def check_if_auto_check_due(
             "frequency_days": current_user.compliance_check_frequency_days
         }
     
-    days_since_last = (datetime.utcnow() - latest.check_date).days
+    days_since_last = (datetime.now(timezone.utc) - latest.check_date).days
     
     if days_since_last >= current_user.compliance_check_frequency_days:
         # הגיע הזמן

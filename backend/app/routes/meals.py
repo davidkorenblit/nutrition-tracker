@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload  # 🆕 הוסף joinedload!
 from app.database import get_db
 from app.models.meal import Meal
@@ -19,6 +19,7 @@ router = APIRouter(
 @router.get("/", response_model=List[MealResponse])
 def get_meals(
     date: str = None, 
+    client_id: int = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -28,16 +29,18 @@ def get_meals(
         joinedload(Meal.hunger_logs)
     )
     
+    target_user_id = client_id if (client_id and current_user.role == "admin") else current_user.id
+    
     # אם התאריך סופק - וודא שיש 3 ארוחות
     if date:
-        ensure_daily_meals(date, current_user.id, db)
+        ensure_daily_meals(date, target_user_id, db)
         meals = query.filter(
             Meal.date == date,
-            Meal.user_id == current_user.id
+            Meal.user_id == target_user_id
         ).all()
     else:
         meals = query.filter(
-            Meal.user_id == current_user.id
+            Meal.user_id == target_user_id
         ).all()
     
     return meals
@@ -140,11 +143,9 @@ def complete_meal(
         db=db
     )
     
-    # 4. עדכן photo_url אם סופק
+    # 4. עדכן photo_url ו-notes אם סופקו
     if meal_data.photo_url:
         meal.photo_url = meal_data.photo_url
-        db.commit()
-    # note.
     if meal_data.notes:
         meal.notes = meal_data.notes
     

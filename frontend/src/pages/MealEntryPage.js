@@ -12,7 +12,6 @@ function MealEntryPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const mealId = parseInt(searchParams.get('meal_id'));
-  const dateParam = searchParams.get('date');
 
   // State - Meal Data
   const [meal, setMeal] = useState(null);
@@ -33,7 +32,6 @@ function MealEntryPage() {
 
   // State - Photo
   const [photoFile, setPhotoFile] = useState(null);
-  const [photoUrl, setPhotoUrl] = useState('');
   const [photoPreview, setPhotoPreview] = useState('');
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
@@ -82,7 +80,7 @@ function MealEntryPage() {
   };
 
   // Show notification with animation
-  const showTimerNotification = () => {
+  const showTimerNotification = React.useCallback(() => {
     playNotificationSound();
     setShowNotification(true);
     setTimerCompleted(true);
@@ -91,7 +89,7 @@ function MealEntryPage() {
     setTimeout(() => {
       setShowNotification(false);
     }, 5000);
-  };
+  }, []);
 
   // Timer polling - check every 10 seconds
   useEffect(() => {
@@ -104,7 +102,7 @@ function MealEntryPage() {
     }, 10000); // Check every 10 seconds
 
     return () => clearInterval(interval);
-  }, []);
+  }, [showTimerNotification]);
 
   // Start timer when "hunger before" is filled
   const startTimer = () => {
@@ -267,20 +265,25 @@ function MealEntryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-xl text-gray-600">Loading...</div>
+      <div className="min-h-screen bg-gray-50 bg-gradient-mesh flex items-center justify-center">
+        <div className="card-glass p-10 flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-500 rounded-full animate-spin"></div>
+          <div className="text-xl font-medium text-gray-600">Loading Meal Data...</div>
+        </div>
       </div>
     );
   }
 
   if (!meal) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-xl text-red-600 mb-4">Meal not found</p>
+      <div className="min-h-screen bg-gray-50 bg-gradient-mesh flex items-center justify-center py-8 px-4">
+        <div className="card-glass p-10 max-w-md w-full text-center">
+          <span className="text-6xl mb-4 block">🍳</span>
+          <p className="text-2xl font-bold text-gray-800 mb-2">Meal not found</p>
+          <p className="text-gray-500 mb-6">We couldn't find the requested meal.</p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="w-full px-4 py-3 bg-gradient-primary text-white font-medium rounded-xl hover:opacity-90 transition-all shadow-sm"
           >
             Back to Dashboard
           </button>
@@ -290,7 +293,7 @@ function MealEntryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 bg-gradient-mesh py-8 px-4">
       {/* Notification Modal */}
       {showNotification && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fadeIn">
@@ -314,13 +317,24 @@ function MealEntryPage() {
         </div>
       )}
 
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md p-8">
+      <div className="max-w-4xl mx-auto card-glass p-6 md:p-10">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Complete Your Meal</h1>
-          <p className="text-gray-600">
-            {meal.meal_type.charAt(0).toUpperCase() + meal.meal_type.slice(1)} - {meal.date}
-          </p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-black text-gradient mb-2 tracking-tight">Complete Your Meal</h1>
+            <p className="text-gray-500 font-medium flex items-center gap-2">
+              <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs uppercase tracking-wider font-bold">
+                {meal.meal_type}
+              </span> 
+              • {meal.date}
+            </p>
+          </div>
+          <button 
+            onClick={() => navigate('/dashboard')}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors"
+          >
+            ✕
+          </button>
         </div>
 
         {/* Error Message */}
@@ -331,200 +345,200 @@ function MealEntryPage() {
         )}
 
         {/* Section 1: Hunger Before */}
-        <div className="mb-8 pb-8 border-b">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">1. Hunger Level Before Eating</h2>
-          <div className="flex items-center gap-4">
-            <span className="text-gray-600">Not Hungry</span>
-            <input
-              type="range"
-              min="1"
-              max="10"
-              value={hungerBefore}
-              onChange={(e) => {
-                setHungerBefore(parseInt(e.target.value));
-                startTimer(); // Start timer when user fills this
-              }}
-              className="flex-1"
-            />
-            <span className="text-gray-600">Very Hungry</span>
-            <span className="text-2xl font-bold text-blue-600 w-12 text-center">
-              {hungerBefore}
-            </span>
+        <div className="mb-8 pb-8 border-b border-gray-100">
+          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <span className="bg-blue-100 text-blue-600 w-8 h-8 flex items-center justify-center rounded-lg text-sm">1</span>
+            Hunger Level Before Eating
+          </h2>
+          <div className="metric-card bg-white hover:-translate-y-0">
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium text-gray-500">Not Hungry</span>
+              <input
+                type="range" min="1" max="10" value={hungerBefore}
+                onChange={(e) => {
+                  setHungerBefore(parseInt(e.target.value));
+                  startTimer();
+                }}
+                className="flex-1 accent-blue-500"
+              />
+              <span className="text-sm font-medium text-gray-500">Very Hungry</span>
+              <span className="text-2xl font-black text-blue-500 w-12 text-center bg-blue-50 rounded-lg py-1">
+                {hungerBefore}
+              </span>
+            </div>
+            {timerStarted && !timerCompleted && (
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100 flex items-center gap-3 animate-pulse">
+                <span className="text-xl">⏱️</span>
+                <p className="text-sm text-blue-700 font-medium">Timer started! You'll be notified in 2-5 minutes during your meal.</p>
+              </div>
+            )}
           </div>
-          {timerStarted && !timerCompleted && (
-            <p className="mt-2 text-sm text-green-600">⏱️ Timer started! You'll be notified in 2-5 minutes.</p>
-          )}
         </div>
 
         {/* Section 2: Healthy Plate */}
-        <div className="mb-8 pb-8 border-b">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">2. Healthy Plate (Reference)</h2>
-          <p className="text-gray-600 mb-4">This is the recommended plate composition:</p>
-          <div className="flex justify-center">
-            <div style={{ width: '300px', height: '300px' }}>
+        <div className="mb-8 pb-8 border-b border-gray-100">
+          <h2 className="text-xl font-bold text-gray-800 mb-1 flex items-center gap-2">
+            <span className="bg-emerald-100 text-emerald-600 w-8 h-8 flex items-center justify-center rounded-lg text-sm">2</span>
+            Healthy Plate (Reference)
+          </h2>
+          <p className="text-gray-500 mb-6 text-sm ml-10">This is the recommended optimal plate composition:</p>
+          <div className="flex flex-col md:flex-row items-center justify-center gap-8 metric-card bg-emerald-50/30 hover:-translate-y-0">
+            <div style={{ width: '220px', height: '220px' }}>
               <Pie data={healthyPlateData} options={chartOptions} />
             </div>
-          </div>
-          <div className="mt-4 text-center text-gray-600">
-            <p>🟢 Vegetables: 50% | 🔴 Protein: 30% | 🟡 Carbs: 20%</p>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100"><span className="w-3 h-3 rounded-full bg-emerald-500"></span><span className="font-medium text-gray-700">Vegetables</span><span className="font-bold text-emerald-600 ml-auto">50%</span></div>
+              <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100"><span className="w-3 h-3 rounded-full bg-red-500"></span><span className="font-medium text-gray-700">Protein</span><span className="font-bold text-red-600 ml-auto">30%</span></div>
+              <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100"><span className="w-3 h-3 rounded-full bg-amber-500"></span><span className="font-medium text-gray-700">Carbs</span><span className="font-bold text-amber-600 ml-auto">20%</span></div>
+            </div>
           </div>
         </div>
 
         {/* Section 3: Free Plate */}
-        <div className="mb-8 pb-8 border-b">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">3. Your Actual Plate</h2>
-          <p className="text-gray-600 mb-4">Enter the percentages for what you actually ate:</p>
+        <div className="mb-8 pb-8 border-b border-gray-100">
+          <h2 className="text-xl font-bold text-gray-800 mb-1 flex items-center gap-2">
+            <span className="bg-purple-100 text-purple-600 w-8 h-8 flex items-center justify-center rounded-lg text-sm">3</span>
+            Your Actual Plate
+          </h2>
+          <p className="text-gray-500 mb-6 text-sm ml-10">Enter the percentages for what you actually ate:</p>
           
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                🟢 Vegetables (%)
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={freePlate.vegetables}
-                onChange={(e) => handleFreePlateChange('vegetables', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+          <div className="metric-card bg-purple-50/30 hover:-translate-y-0">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-3">
+                  <span className="w-3 h-3 rounded-full bg-emerald-500"></span> Vegetables (%)
+                </label>
+                <input
+                  type="number" min="0" max="100" value={freePlate.vegetables}
+                  onChange={(e) => handleFreePlateChange('vegetables', e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all font-semibold text-gray-800"
+                />
+              </div>
+              
+              <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-3">
+                  <span className="w-3 h-3 rounded-full bg-red-500"></span> Protein (%)
+                </label>
+                <input
+                  type="number" min="0" max="100" value={freePlate.protein}
+                  onChange={(e) => handleFreePlateChange('protein', e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white transition-all font-semibold text-gray-800"
+                />
+              </div>
+              
+              <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-3">
+                  <span className="w-3 h-3 rounded-full bg-amber-500"></span> Carbs (%)
+                </label>
+                <input
+                  type="number" min="0" max="100" value={freePlate.carbs}
+                  onChange={(e) => handleFreePlateChange('carbs', e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white transition-all font-semibold text-gray-800"
+                />
+              </div>
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                🔴 Protein (%)
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={freePlate.protein}
-                onChange={(e) => handleFreePlateChange('protein', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                🟡 Carbs (%)
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={freePlate.carbs}
-                onChange={(e) => handleFreePlateChange('carbs', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
 
-          <div className="mb-4">
-            <p className={`text-center font-semibold ${freePlateSum === 100 ? 'text-green-600' : 'text-red-600'}`}>
-              Total: {freePlateSum}% {freePlateSum === 100 ? '✓' : '(must be 100%)'}
-            </p>
-          </div>
+            <div className={`p-4 rounded-xl border text-center font-bold flex flex-col items-center gap-1 ${freePlateSum === 100 ? 'bg-emerald-50 border-emerald-200 shadow-sm' : 'bg-red-50 border-red-200'}`}>
+              <span className={`text-3xl ${freePlateSum === 100 ? 'text-emerald-500' : 'text-red-500'}`}>
+                {freePlateSum === 100 ? '✓' : '⚠️'}
+              </span>
+              <p className={freePlateSum === 100 ? 'text-emerald-700' : 'text-red-700'}>
+                Total: {freePlateSum}% <span className="font-normal opacity-80">{freePlateSum !== 100 && '(must equal 100%)'}</span>
+              </p>
+            </div>
 
-          <div className="flex justify-center">
-            <div style={{ width: '300px', height: '300px' }}>
-              <Pie data={freePlateData} options={chartOptions} />
+            <div className="flex justify-center mt-8">
+              <div style={{ width: '220px', height: '220px' }}>
+                <Pie data={freePlateData} options={chartOptions} />
+              </div>
             </div>
           </div>
         </div>
 
         {/* Section 4: Photo Upload */}
-        <div className="mb-8 pb-8 border-b">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">4. Meal Photo (Optional)</h2>
-          <input
-            type="file"
-            accept="image/jpeg,image/png"
-            onChange={handlePhotoSelect}
-            className="mb-4"
-          />
-          <p className="text-sm text-gray-500 mb-4">Max 5MB, JPG or PNG only</p>
-          
-          {photoPreview && (
-            <div className="mt-4">
-              <p className="text-sm text-gray-600 mb-2">Preview:</p>
-              <img
-                src={photoPreview}
-                alt="Meal preview"
-                className="max-w-md rounded shadow"
-              />
-            </div>
-          )}
+        <div className="mb-8 pb-8 border-b border-gray-100">
+          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <span className="bg-pink-100 text-pink-600 w-8 h-8 flex items-center justify-center rounded-lg text-sm">4</span>
+            Meal Photo (Optional)
+          </h2>
+          <div className="metric-card bg-white hover:-translate-y-0 text-center py-8 border-dashed border-2 border-gray-200">
+            <div className="text-4xl mb-3">📸</div>
+            <input
+              type="file" accept="image/jpeg,image/png"
+              onChange={handlePhotoSelect}
+              className="block w-full max-w-xs mx-auto text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0
+                file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-600
+                hover:file:bg-pink-100 transition-colors cursor-pointer"
+            />
+            <p className="text-xs text-gray-400 mt-3">Max 5MB, JPG or PNG only</p>
+            
+            {photoPreview && (
+              <div className="mt-6">
+                <img src={photoPreview} alt="Meal preview" className="max-w-xs mx-auto rounded-xl shadow border border-gray-100" />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Section 4.5: Notes */}
-        <div className="mb-8 pb-8 border-b">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Notes (Optional)</h2>
+        <div className="mb-8 pb-8 border-b border-gray-100">
+          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">📝 Notes (Optional)</h2>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Add any notes about this meal..."
-            rows="4"
-            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Add any context, how you felt, where you ate..."
+            rows="3"
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white resize-none transition-all"
           />
         </div>
 
         {/* Section 5: Hunger During */}
-        <div className="mb-8 pb-8 border-b">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">5. Hunger Level During Eating</h2>
-          <p className="text-sm text-gray-500 mb-4">
-            {timerCompleted ? '✅ Timer completed!' : 'You can fill this anytime (timer is just a reminder)'}
+        <div className="mb-8 pb-8 border-b border-gray-100">
+          <h2 className="text-xl font-bold text-gray-800 mb-1 flex items-center gap-2">
+            <span className="bg-blue-100 text-blue-600 w-8 h-8 flex items-center justify-center rounded-lg text-sm">5</span>
+            Hunger Level During Eating
+          </h2>
+          <p className="text-sm text-gray-500 mb-4 ml-10">
+            {timerCompleted ? '✅ Timer completed! Time to evaluate.' : 'You can fill this anytime (timer is just a reminder)'}
           </p>
-          <div className="flex items-center gap-4">
-            <span className="text-gray-600">Not Hungry</span>
-            <input
-              type="range"
-              min="1"
-              max="10"
-              value={hungerDuring}
-              onChange={(e) => setHungerDuring(parseInt(e.target.value))}
-              className="flex-1"
-            />
-            <span className="text-gray-600">Very Hungry</span>
-            <span className="text-2xl font-bold text-blue-600 w-12 text-center">
-              {hungerDuring}
-            </span>
+          <div className="metric-card bg-white hover:-translate-y-0 flex items-center gap-4">
+            <span className="text-sm font-medium text-gray-500">Not Hungry</span>
+            <input type="range" min="1" max="10" value={hungerDuring} onChange={(e) => setHungerDuring(parseInt(e.target.value))} className="flex-1 accent-indigo-500" />
+            <span className="text-sm font-medium text-gray-500">Very Hungry</span>
+            <span className="text-2xl font-black text-indigo-500 w-12 text-center bg-indigo-50 rounded-lg py-1">{hungerDuring}</span>
           </div>
         </div>
 
         {/* Section 6: Hunger After */}
         <div className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">6. Hunger Level After Eating</h2>
-          <div className="flex items-center gap-4">
-            <span className="text-gray-600">Not Hungry</span>
-            <input
-              type="range"
-              min="1"
-              max="10"
-              value={hungerAfter}
-              onChange={(e) => setHungerAfter(parseInt(e.target.value))}
-              className="flex-1"
-            />
-            <span className="text-gray-600">Very Hungry</span>
-            <span className="text-2xl font-bold text-blue-600 w-12 text-center">
-              {hungerAfter}
-            </span>
+          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <span className="bg-blue-100 text-blue-600 w-8 h-8 flex items-center justify-center rounded-lg text-sm">6</span>
+            Hunger Level After Eating
+          </h2>
+          <div className="metric-card bg-white hover:-translate-y-0 flex items-center gap-4">
+            <span className="text-sm font-medium text-gray-500">Not Hungry</span>
+            <input type="range" min="1" max="10" value={hungerAfter} onChange={(e) => setHungerAfter(parseInt(e.target.value))} className="flex-1 accent-purple-500" />
+            <span className="text-sm font-medium text-gray-500">Very Hungry</span>
+            <span className="text-2xl font-black text-purple-500 w-12 text-center bg-purple-50 rounded-lg py-1">{hungerAfter}</span>
           </div>
         </div>
 
         {/* Submit Button */}
-        <div className="flex gap-4">
+        <div className="flex gap-4 mt-12 bg-gray-50 -mx-6 md:-mx-10 -mb-6 md:-mb-10 p-6 md:p-10 rounded-b-2xl border-t border-gray-100">
           <button
             onClick={() => navigate('/dashboard')}
-            className="flex-1 px-6 py-3 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
+            className="flex-1 px-6 py-4 rounded-xl text-gray-600 font-bold bg-white border border-gray-200 hover:bg-gray-50 hover:text-gray-800 transition-all shadow-sm"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={!isFormValid() || submitting || uploadingPhoto}
-            className={`flex-1 px-6 py-3 rounded text-white font-semibold ${
+            className={`flex-[2] px-6 py-4 rounded-xl text-white font-bold transition-all shadow-md ${
               isFormValid() && !submitting && !uploadingPhoto
-                ? 'bg-blue-600 hover:bg-blue-700'
-                : 'bg-gray-400 cursor-not-allowed'
+                ? 'bg-gradient-primary hover:shadow-lg hover:-translate-y-0.5'
+                : 'bg-gray-300 cursor-not-allowed text-gray-500'
             }`}
           >
             {submitting ? 'Saving...' : uploadingPhoto ? 'Uploading Photo...' : 'Save Meal'}

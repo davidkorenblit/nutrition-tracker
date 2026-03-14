@@ -45,6 +45,7 @@ class MealResponse(BaseModel):
     date: str
     timestamp: datetime
     photo_url: Optional[str] = None
+    notes: Optional[str] = None
     plates: List[PlateResponse] = []  # 🆕 הוסף!
     hunger_logs: List[HungerLogResponse] = []  # 🆕 בונוס - גם hunger logs!
     

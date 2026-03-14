@@ -5,7 +5,7 @@ from app.models.verification_code import VerificationCode
 from app.schemas.auth import UserCreate
 from app.utils.security import get_password_hash, verify_password, create_access_token
 from app.services.email_service import send_verification_email
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 import uuid
 import logging
 
@@ -101,7 +101,7 @@ def verify_email(verification_code: str, db: Session) -> bool:
         )
     
     # בדוק אם הקוד פג תוקף
-    if datetime.utcnow() > verification.expires_at:
+    if datetime.now(timezone.utc) > verification.expires_at:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Verification code expired"

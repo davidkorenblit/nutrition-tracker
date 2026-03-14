@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.snack import Snack
@@ -33,17 +33,20 @@ def create_snack(
 @router.get("/", response_model=List[SnackResponse])
 def get_snacks(
     date: str = None, 
+    client_id: int = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    target_user_id = client_id if (client_id and current_user.role == "admin") else current_user.id
+    
     if date:
         snacks = db.query(Snack).filter(
             Snack.date == date,
-            Snack.user_id == current_user.id
+            Snack.user_id == target_user_id
         ).all()
     else:
         snacks = db.query(Snack).filter(
-            Snack.user_id == current_user.id
+            Snack.user_id == target_user_id
         ).all()
     return snacks
 

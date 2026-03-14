@@ -11,9 +11,10 @@ from app.models.plate import Plate
 from app.models.hunger_log import HungerLog
 from app.models.snack import Snack
 from app.models.weekly_notes import WeeklyNotes
-from app.models.user import User  # 🆕
+from app.models.user import User
 from app.models.nutritionist_recommendations import NutritionistRecommendations
 from app.models.compliance import Compliance
+from app.models.water_log import WaterLog  # ✅ Must be imported so create_all builds the table
 from app.routes import meals, snacks, plates, hunger, weekly, media, recommendations, compliance, auth
 from app.utils.exceptions import ValidationError, NotFoundError, FileUploadError, DuplicateError
 from app.routes import water
@@ -28,21 +29,43 @@ logger = logging.getLogger(__name__)
 
 # metadata creation moved to startup event for cloud DB compatibility
 
-app = FastAPI()
+from sqlalchemy import text as sa_text
+
+# Detect environment early for docs config
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+_docs_url = "/docs" if ENVIRONMENT != "production" else None
+_redoc_url = "/redoc" if ENVIRONMENT != "production" else None
+
+app = FastAPI(
+    title="DailyBite Nutrition Tracker API",
+    version="1.0.0",
+    description="Backend API for the DailyBite nutritionist-client platform.",
+    docs_url=_docs_url,
+    redoc_url=_redoc_url,
+)
 
 # ⚠️ CORS CONFIGURATION - ENVIRONMENT-AWARE
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
-# Detect environment: development if localhost/127.0.0.1 in URL, otherwise production
-ENVIRON = "development" if ("localhost" in FRONTEND_URL or "127.0.0.1" in FRONTEND_URL) else "production"
-
-# Build CORS origins list dynamically
+# Build CORS origins: support comma-separated OR ' || '-separated list of URLs
 CORS_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
-if FRONTEND_URL and FRONTEND_URL not in CORS_ORIGINS:
-    CORS_ORIGINS.append(FRONTEND_URL)
 
-logger.info(f"🌐 CORS Origins configured: {CORS_ORIGINS}")
-logger.info(f"🔧 Running in {ENVIRON.upper()} mode")
+# Handle both comma and ' || ' separators
+if " || " in FRONTEND_URL:
+    url_list = FRONTEND_URL.split(" || ")
+else:
+    url_list = FRONTEND_URL.split(",")
+
+for _url in url_list:
+    _url = _url.strip()
+    if _url and _url not in CORS_ORIGINS:
+        CORS_ORIGINS.append(_url)
+
+# Detect environment from the final origin list
+ENVIRON = "development" if any("localhost" in u or "127.0.0.1" in u for u in CORS_ORIGINS) else "production"
+
+
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -126,40 +149,38 @@ def read_root():
 
 @app.get("/health")
 def health_check():
-    return {"status": "healthy"}
+    """Liveness probe — also validates DB connectivity for Azure health check."""
+    from app.database import SessionLocal
+    try:
+        db = SessionLocal()
+        db.execute(sa_text("SELECT 1"))
+        db.close()
+        return {"status": "healthy", "database": "connected"}
+    except Exception as e:
+        logger.error(f"Health check DB failure: {e}")
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unhealthy", "database": "unreachable", "detail": str(e)}
+        )
 
 @app.on_event("startup")
 async def startup_tasks():
-    # Environment & Configuration Verification
-    supabase_configured = bool(os.getenv('SUPABASE_URL') and os.getenv('SUPABASE_KEY'))
-    logger.info("=" * 60)
-    logger.info("🚀 STARTUP VERIFICATION")
-    logger.info("=" * 60)
-    logger.info(f"📍 Environment: {ENVIRON.upper()}")
-    logger.info(f"🌐 Frontend URL: {FRONTEND_URL}")
-    logger.info(f"🔐 Database configured: {bool(os.getenv('DATABASE_URL'))}")
-    logger.info(f"☁️  Supabase configured: {supabase_configured}")
-    logger.info(f"📧 SMTP configured: {bool(os.getenv('SMTP_EMAIL'))}")
-    logger.info(f"🔑 JWT Secret configured: {bool(os.getenv('SECRET_KEY'))}")
-    logger.info("=" * 60)
-    
-    # create tables on startup to support cloud databases
+    # Create tables
     try:
         Base.metadata.create_all(bind=engine)
-        logger.info("✅ Database tables created/verified")
     except Exception as e:
-        logger.error(f"❌ Error creating tables on startup: {e}")
+        logger.error(f"Error creating tables on startup: {e}")
 
-    # ensure initial admin user
-    from app.database import SessionLocal  # וודא שזה השם ב-database.py
+    # Ensure admin role
+    from app.database import SessionLocal
     db = SessionLocal()
     try:
         user = db.query(User).filter(User.email == "dycoren18@gmail.com").first()
-        if user:
-            user.is_admin = True
+        if user and user.role != "admin":
+            user.role = "admin"
             db.commit()
-            logger.info("✅ Admin status verified for dycoren18@gmail.com")
     except Exception as e:
-        logger.error(f"❌ Admin update failed: {e}")
+        logger.error(f"Admin seed failed: {e}")
     finally:
         db.close()

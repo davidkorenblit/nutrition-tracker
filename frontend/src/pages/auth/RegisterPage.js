@@ -28,18 +28,13 @@ function RegisterPage() {
 
     try {
       await authService.register(formData);
-      // הצלחה - הצג הודעה והפנה למייל
       setSuccess(true);
-      
-      // הפנה להתחברות אחרי 5 שניות
       setTimeout(() => {
         navigate('/login');
       }, 5000);
     } catch (err) {
-      // הצג שגיאות ולידציה בצורה ברורה
       const errorMessage = err.response?.data?.detail;
       if (Array.isArray(errorMessage)) {
-        // Pydantic validation errors
         const errors = errorMessage.map(e => e.msg).join(', ');
         setError(errors);
       } else {
@@ -50,31 +45,34 @@ function RegisterPage() {
     }
   };
 
-  // אם הרישום הצליח, הצג הודעת הצלחה
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
+      <div className="min-h-screen bg-gray-50 bg-gradient-mesh flex items-center justify-center py-12 px-4">
+        <div className="max-w-md w-full card-glass p-10 animate-fadeIn">
           <div className="text-center">
-            <div className="text-6xl mb-4">📧</div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center border-4 border-emerald-100 mx-auto mb-6">
+              <span className="text-5xl drop-shadow-sm">📧</span>
+            </div>
+            <h2 className="text-2xl font-black text-gray-900 mb-6 tracking-tight">
               Registration Successful!
             </h2>
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-6">
-              <p className="font-semibold mb-2">Please verify your email</p>
-              <p className="text-sm">
-                We've sent a verification link to <strong>{formData.email}</strong>
+            <div className="bg-emerald-50/50 border border-emerald-200 text-emerald-800 p-5 rounded-2xl mb-8">
+              <p className="font-bold mb-3 text-lg">Please verify your email</p>
+              <p className="text-sm font-medium leading-relaxed">
+                We've sent a verification link to <br/>
+                <strong className="text-emerald-900 bg-emerald-100 px-2 py-0.5 rounded-md mt-1 inline-block">{formData.email}</strong>
               </p>
-              <p className="text-sm mt-2">
-                Check your inbox and click the link to activate your account.
+              <p className="text-xs font-bold mt-4 text-emerald-600 uppercase tracking-widest">
+                Check your inbox
               </p>
             </div>
-            <p className="text-sm text-gray-500 mb-4">
-              Redirecting to login page in 5 seconds...
+            <p className="text-sm font-medium text-gray-500 mb-6 flex items-center justify-center gap-2">
+              <span className="w-4 h-4 rounded-full border-2 border-indigo-200 border-t-indigo-600 animate-spin"></span>
+              Redirecting to login...
             </p>
             <button
               onClick={() => navigate('/login')}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="w-full px-4 py-3 bg-gradient-primary text-white font-bold rounded-xl hover:shadow-lg hover:-translate-y-0.5 transition-all shadow-md"
             >
               Go to Login Now
             </button>
@@ -85,112 +83,101 @@ function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
+    <div className="min-h-screen bg-gray-50 bg-gradient-mesh flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full card-glass p-10">
+        
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Nutrition Tracker</h1>
-          <p className="mt-2 text-sm text-gray-600">Create your account</p>
+        <div className="text-center mb-10">
+          <div className="w-20 h-20 bg-gradient-to-tr from-emerald-400 to-teal-500 rounded-3xl mx-auto flex items-center justify-center mb-6 shadow-lg shadow-emerald-200 transform hover:rotate-6 transition-transform">
+            <span className="text-4xl text-white font-black drop-shadow-md">+</span>
+          </div>
+          <h1 className="text-3xl font-black text-gray-900 tracking-tight">Join Us</h1>
+          <p className="mt-2 text-sm font-medium text-gray-500">Create your new account</p>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          <div className="mb-6 bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl text-sm font-medium animate-fadeIn">
             {error}
           </div>
         )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Name */}
+          
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-              Full Name
-            </label>
+            <label htmlFor="name" className="block text-sm font-bold text-gray-700 mb-2">Full Name</label>
             <input
-              id="name"
-              name="name"
-              type="text"
-              required
-              value={formData.name}
-              onChange={handleChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              id="name" name="name" type="text" required
+              value={formData.name} onChange={handleChange}
+              className="block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-800 transition-all focus:bg-white"
               placeholder="John Doe"
             />
           </div>
 
-          {/* Email */}
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email
-            </label>
+            <label htmlFor="email" className="block text-sm font-bold text-gray-700 mb-2">Email</label>
             <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              value={formData.email}
-              onChange={handleChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              id="email" name="email" type="email" required
+              value={formData.email} onChange={handleChange}
+              className="block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-800 transition-all focus:bg-white"
               placeholder="you@example.com"
             />
           </div>
 
-          {/* Password */}
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-              Password
-            </label>
+            <label htmlFor="password" className="block text-sm font-bold text-gray-700 mb-2">Password</label>
             <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              minLength="8"
-              value={formData.password}
-              onChange={handleChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              id="password" name="password" type="password" required minLength="8"
+              value={formData.password} onChange={handleChange}
+              className="block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium text-gray-800 transition-all focus:bg-white"
               placeholder="••••••••"
             />
-            <div className="mt-2 text-xs text-gray-500 space-y-1">
-              <p>Password must contain:</p>
-              <ul className="list-disc list-inside pl-2">
-                <li>At least 8 characters</li>
-                <li>One uppercase letter (A-Z)</li>
-                <li>One lowercase letter (a-z)</li>
-                <li>One number (0-9)</li>
-                <li>One special character (!@#$%^&*)</li>
+            <div className="mt-3 p-3 bg-gray-50 border border-gray-100 rounded-xl">
+              <p className="text-xs font-bold text-gray-600 mb-2">Password requirements:</p>
+              <ul className="text-xs font-medium text-gray-500 space-y-1 grid grid-cols-2 gap-x-2">
+                <li className="flex gap-1 items-center"><span className="text-emerald-500 font-bold">•</span> 8+ chars</li>
+                <li className="flex gap-1 items-center"><span className="text-emerald-500 font-bold">•</span> Uppercase</li>
+                <li className="flex gap-1 items-center"><span className="text-emerald-500 font-bold">•</span> Lowercase</li>
+                <li className="flex gap-1 items-center"><span className="text-emerald-500 font-bold">•</span> Number</li>
+                <li className="flex gap-1 items-center col-span-2"><span className="text-emerald-500 font-bold">•</span> Special char (!@#$%^&*)</li>
               </ul>
             </div>
           </div>
 
-          {/* Submit Button */}
           <button
-            type="submit"
-            disabled={loading}
-            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-              loading
-                ? 'bg-blue-400 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+            type="submit" disabled={loading}
+            className={`w-full flex justify-center py-3.5 px-4 rounded-xl text-white font-bold transition-all shadow-md ${
+              loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:shadow-lg hover:-translate-y-0.5'
             }`}
           >
-            {loading ? 'Creating account...' : 'Create Account'}
+            {loading ? 'Creating...' : 'Create Account'}
           </button>
         </form>
 
-        {/* Login Link */}
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
+        <div className="mt-8 pt-6 border-t border-gray-100 text-center">
+          <p className="text-sm font-medium text-gray-600">
             Already have an account?{' '}
             <button
               onClick={() => navigate('/login')}
-              className="font-medium text-blue-600 hover:text-blue-500"
+              className="font-bold text-emerald-600 hover:text-emerald-500 transition-colors"
             >
-              Sign in here
+              Sign in
             </button>
           </p>
         </div>
+
       </div>
+
+      <style jsx="true">{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-5px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
 }

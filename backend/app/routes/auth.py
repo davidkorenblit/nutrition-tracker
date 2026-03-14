@@ -130,7 +130,7 @@ def get_current_user_info(current_user: User = Depends(get_current_user)):
 
 @router.put("/profile", response_model=UserResponse)
 def update_profile(
-    name: str,
+    profile_data: dict,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -140,13 +140,14 @@ def update_profile(
     Headers:
         - Authorization: Bearer <token>
     
-    Query Parameters:
+    Body:
         - name: שם חדש
     
     Returns:
         פרטי המשתמש המעודכן
     """
-    current_user.name = name
+    if "name" in profile_data:
+        current_user.name = profile_data["name"]
     db.commit()
     db.refresh(current_user)
     return current_user

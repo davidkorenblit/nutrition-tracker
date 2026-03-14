@@ -15,6 +15,10 @@ from app.services.file_service import (
 )
 from app.utils.dependencies import get_current_user
 from typing import List
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 router = APIRouter(
     prefix="/api/v1/recommendations",
@@ -55,7 +59,8 @@ async def upload_word_file(
         return db_recommendation
     
     except Exception as e:
-        raise
+        logger.error(f"Failed to process recommendation upload: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to process file: {str(e)}")
 
 
 @router.get("/", response_model=List[RecommendationResponse])

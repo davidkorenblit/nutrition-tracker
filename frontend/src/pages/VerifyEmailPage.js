@@ -17,72 +17,75 @@ function VerifyEmailPage() {
       return;
     }
 
-    // שלח את הקוד לשרת
     api.post('/api/v1/auth/verify-email', { code })
-      .then(data => {
+      .then(response => {
         setStatus('success');
-        setMessage(data.message || 'Email verified successfully!');
-        
-        // הפנה להתחברות אחרי 3 שניות
+        setMessage(response.data?.message || 'Email verified successfully!');
         setTimeout(() => {
           navigate('/login');
         }, 3000);
       })
       .catch(err => {
         setStatus('error');
-        setMessage(err.message || 'Verification failed. Please try again.');
+        setMessage(err.response?.data?.detail || err.message || 'Verification failed.');
       });
   }, [code, navigate]);
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
+    <div className="min-h-screen bg-gray-50 bg-gradient-mesh flex items-center justify-center py-12 px-4">
+      <div className="max-w-md w-full card-glass p-10">
         <div className="text-center">
           {/* Icon */}
-          <div className="mb-4">
+          <div className="mb-6 flex justify-center">
             {status === 'verifying' && (
-              <div className="text-6xl animate-spin">⏳</div>
+              <div className="w-20 h-20 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
             )}
             {status === 'success' && (
-              <div className="text-6xl text-green-500">✅</div>
+              <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center border-4 border-emerald-100">
+                <span className="text-5xl drop-shadow-sm">✅</span>
+              </div>
             )}
             {status === 'error' && (
-              <div className="text-6xl text-red-500">❌</div>
+              <div className="w-24 h-24 bg-rose-50 rounded-full flex items-center justify-center border-4 border-rose-100">
+                <span className="text-5xl drop-shadow-sm">❌</span>
+              </div>
             )}
           </div>
 
           {/* Title */}
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+          <h1 className="text-2xl font-black text-gray-900 mx-auto tracking-tight mb-3">
             {status === 'verifying' && 'Verifying Your Email...'}
             {status === 'success' && 'Email Verified!'}
             {status === 'error' && 'Verification Failed'}
           </h1>
 
           {/* Message */}
-          <p className={`text-lg mb-6 ${
-            status === 'error' ? 'text-red-600' : 'text-gray-600'
+          <p className={`text-base font-medium mb-8 ${
+            status === 'error' ? 'text-rose-600' : 'text-gray-500'
           }`}>
             {message}
           </p>
 
           {/* Actions */}
           {status === 'success' && (
-            <p className="text-sm text-gray-500">
-              Redirecting to login page in 3 seconds...
-            </p>
+            <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
+              <p className="text-sm font-bold text-indigo-600 animate-pulse">
+                Redirecting you to login in 3 seconds...
+              </p>
+            </div>
           )}
 
           {status === 'error' && (
             <div className="space-y-3">
               <button
                 onClick={() => navigate('/login')}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="w-full px-4 py-3 bg-gradient-primary text-white font-bold rounded-xl hover:shadow-lg hover:-translate-y-0.5 transition-all shadow-md"
               >
                 Go to Login
               </button>
               <button
                 onClick={() => navigate('/register')}
-                className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
+                className="w-full px-4 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all shadow-sm"
               >
                 Register Again
               </button>

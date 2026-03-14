@@ -1,7 +1,7 @@
 import os
 import bcrypt
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
 from dotenv import load_dotenv
@@ -64,9 +64,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         to_encode = data.copy()
         
         if expires_delta:
-            expire = datetime.utcnow() + expires_delta
+            expire = datetime.now(timezone.utc) + expires_delta
         else:
-            expire = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+            expire = datetime.now(timezone.utc) + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
         
         to_encode.update({"exp": expire})
         logger.debug(f"Creating token for data keys: {list(to_encode.keys())}")
@@ -88,6 +88,4 @@ def decode_access_token(token: str) -> Optional[dict]:
         return None
     except Exception as e:
         logger.error(f"Error decoding access token: {str(e)}", exc_info=True)
-        return None
-    except JWTError:
         return None

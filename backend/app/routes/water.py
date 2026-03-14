@@ -48,11 +48,14 @@ def get_logs_by_date(
 @router.get("/total")
 def get_total_water(
     date_param: date = Query(..., alias="date"),
+    client_id: int = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    target_user_id = client_id if (client_id and current_user.role == "admin") else current_user.id
+
     total = get_total_water_by_date(
-        user_id=current_user.id,
+        user_id=target_user_id,
         target_date=date_param,
         db=db
     )

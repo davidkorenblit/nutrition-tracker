@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database import Base
-from datetime import datetime
+from datetime import datetime, timezone
 
 class WaterLog(Base):
     __tablename__ = "water_logs"
@@ -9,6 +9,6 @@ class WaterLog(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     amount_ml = Column(Float, nullable=False)
-    logged_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    logged_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     
     user = relationship("User", back_populates="water_logs")

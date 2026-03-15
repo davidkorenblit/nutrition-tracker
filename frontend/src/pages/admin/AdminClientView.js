@@ -12,6 +12,22 @@ function AdminClientView() {
   const [dailyData, setDailyData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Modal state for showing full meal info
+  const [selectedMeal, setSelectedMeal] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  const handleMealClick = (meal) => {
+    if (meal.is_logged) {
+      setSelectedMeal(meal);
+      setIsModalOpen(true);
+    }
+  };
+  
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedMeal(null);
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -62,10 +78,7 @@ function AdminClientView() {
     });
   };
 
-  const getMealTime = (meal) => {
-    const timeMap = { breakfast: '08:00', lunch: '12:00', dinner: '18:00' };
-    return timeMap[meal.meal_type] || '12:00';
-  };
+  const mealOrder = { breakfast: 1, lunch: 2, dinner: 3 };
 
   if (loading) {
     return (
@@ -149,11 +162,11 @@ function AdminClientView() {
                       <p className="text-gray-400 font-medium italic text-sm">No meals recorded</p>
                     ) : (
                       <div className="space-y-3">
-                        {day.meals.map((meal) => (
-                          <div key={meal.id} className="flex flex-col sm:flex-row sm:items-center p-4 bg-white rounded-xl border border-gray-100 shadow-sm gap-4 transition-transform hover:-translate-y-0.5">
+                        {day.meals.sort((a,b) => (mealOrder[a.meal_type] || 4) - (mealOrder[b.meal_type] || 4)).map((meal) => (
+                          <div key={meal.id} className="flex flex-col sm:flex-row sm:items-center p-4 bg-white rounded-xl border border-gray-100 shadow-sm gap-4 transition-transform hover:-translate-y-0.5"
+                               onClick={() => handleMealClick(meal)} style={{cursor: 'pointer'}}>
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <span className="font-black text-gray-900">{getMealTime(meal)}</span>
                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold bg-indigo-50 text-indigo-600 uppercase tracking-wider">
                                   {meal.meal_type}
                                 </span>
@@ -204,12 +217,12 @@ function AdminClientView() {
                       </h3>
                       <div className="flex justify-between text-xs font-bold text-cyan-700 mb-2">
                         <span className="uppercase tracking-widest">Progress</span>
-                        <span>{day.waterTotal}ml / 2500ml</span>
+                        <span>{day.waterTotal}ml / 3000ml</span>
                       </div>
                       <div className="w-full bg-cyan-100/50 rounded-full h-3 overflow-hidden border border-cyan-200/50">
                         <div
                           className="bg-gradient-to-r from-cyan-400 to-blue-500 h-full rounded-full transition-all duration-1000 relative"
-                          style={{ width: `${Math.min((day.waterTotal / 2500) * 100, 100)}%` }}
+                          style={{ width: `${Math.min((day.waterTotal / 3000) * 100, 100)}%` }}
                         >
                           <div className="absolute top-0 right-0 bottom-0 left-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)] bg-[length:1rem_1rem] animate-[progress_1s_linear_infinite]"></div>
                         </div>
@@ -243,6 +256,115 @@ function AdminClientView() {
           ))}
         </div>
       </div>
+
+      {/* --- Full Meal Details Modal --- */}
+      {isModalOpen && selectedMeal && (
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 opacity-100 transition-opacity">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto transform scale-100 transition-transform">
+            
+            {/* Modal Header */}
+            <div className={`p-6 md:p-8 flex justify-between items-center bg-gradient-to-r ${(selectedMeal.meal_type === 'breakfast') ? 'from-amber-50 to-orange-50' : (selectedMeal.meal_type === 'lunch') ? 'from-emerald-50 to-green-50' : 'from-indigo-50 to-purple-50'} border-b border-gray-100`}>
+              <div>
+                <h2 className="text-2xl font-black text-gray-900 capitalize flex items-center gap-3">
+                  <span className="text-3xl">{(selectedMeal.meal_type === 'breakfast') ? '🍳' : (selectedMeal.meal_type === 'lunch') ? '🍽️' : '🌙'}</span> 
+                  {selectedMeal.meal_type} Details
+                </h2>
+                <p className="text-sm font-bold text-gray-500 mt-1">{formatDate(selectedMeal.date)}</p>
+              </div>
+              <button onClick={closeModal} className="w-10 h-10 flex items-center justify-center rounded-full bg-white text-gray-500 hover:bg-gray-100 hover:text-red-500 transition-colors shadow-sm text-xl font-bold">
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 md:p-8 space-y-8">
+              
+              {/* Top Row: Plate + Notes & Photo */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                
+                {/* Free Plate Composition */}
+                <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+                  <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-4">Plate Composition</h3>
+                  {selectedMeal.plates && selectedMeal.plates.some(p => p.plate_type === "free") ? (
+                    (() => {
+                      const freePlate = selectedMeal.plates.find(p => p.plate_type === "free");
+                      return (
+                        <div className="space-y-4 text-sm font-bold">
+                          <div className="flex items-center justify-between">
+                            <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-emerald-500"></span> Vegetables</span>
+                            <span className="text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100">{freePlate.vegetables_percent}%</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-red-500"></span> Protein</span>
+                            <span className="text-red-600 bg-red-50 px-2.5 py-1 rounded-lg border border-red-100">{freePlate.protein_percent}%</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-amber-500"></span> Carbs</span>
+                            <span className="text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-100">{freePlate.carbs_percent}%</span>
+                          </div>
+                        </div>
+                      )
+                    })()
+                  ) : (
+                    <p className="text-gray-400 italic text-sm">No plate logged</p>
+                  )}
+                </div>
+
+                {/* Highlights (Photo & Text) */}
+                <div className="bg-yellow-50/50 rounded-2xl p-5 border border-yellow-100/50">
+                  <h3 className="text-sm font-black text-yellow-600/60 uppercase tracking-widest mb-4">Notes & Photo</h3>
+                  <div className="space-y-4">
+                    {selectedMeal.notes ? (
+                      <p className="text-sm text-gray-700 italic border-l-4 border-yellow-300 pl-3">"{selectedMeal.notes}"</p>
+                    ) : (
+                      <p className="text-sm text-gray-400 italic">No notes added.</p>
+                    )}
+                    
+                    {selectedMeal.photo_url ? (
+                      <div className="aspect-square w-full sm:w-32 rounded-xl overflow-hidden shadow-sm border border-yellow-200/50 cursor-pointer" onClick={() => window.open(selectedMeal.photo_url, '_blank')}>
+                         <img src={selectedMeal.photo_url} alt="Meal Full Size" className="w-full h-full object-cover hover:scale-105 transition-transform" />
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400 italic">No photo added.</p>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Bottom Row: Hunger Logs */}
+              <div className="bg-blue-50/50 rounded-2xl p-5 border border-blue-100/50">
+                <h3 className="text-sm font-black text-blue-500/60 uppercase tracking-widest mb-4">Hunger Timeline</h3>
+                {selectedMeal.hunger_logs && selectedMeal.hunger_logs.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-4">
+                   {/* Create an ordered dictionary to ensure before/during/after order */}
+                  {['before', 'during', 'after'].map(stage => {
+                     const log = selectedMeal.hunger_logs.find(l => l.log_type === stage) || { hunger_level: '-' };
+                     return (
+                        <div key={stage} className="text-center bg-white p-3 rounded-xl shadow-sm border border-blue-100">
+                          <p className="text-xs font-bold text-gray-400 uppercase mb-2">{stage}</p>
+                          <div className={`mx-auto w-10 h-10 rounded-full flex items-center justify-center text-lg font-black shadow-inner
+                            ${log.hunger_level === '-' ? 'bg-gray-100 text-gray-300' 
+                              : log.hunger_level <= 3 ? 'bg-emerald-100 text-emerald-600'
+                              : log.hunger_level <= 7 ? 'bg-amber-100 text-amber-600'
+                              : 'bg-rose-100 text-rose-600'
+                            }`
+                          }>
+                            {log.hunger_level}
+                          </div>
+                        </div>
+                     )
+                  })}
+                  </div>
+                ) : (
+                   <p className="text-gray-400 italic text-sm text-center py-2">No hunger logs recorded</p>
+                )}
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx="true">{`
         @keyframes progress {

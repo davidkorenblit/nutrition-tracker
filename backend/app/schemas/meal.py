@@ -46,6 +46,7 @@ class MealResponse(BaseModel):
     timestamp: datetime
     photo_url: Optional[str] = None
     notes: Optional[str] = None
+    is_logged: bool = False
     plates: List[PlateResponse] = []  # 🆕 הוסף!
     hunger_logs: List[HungerLogResponse] = []  # 🆕 בונוס - גם hunger logs!
     
@@ -73,4 +74,4 @@ class CompleteMealCreate(BaseModel):
     # Photo (אופציונלי)
     photo_url: Optional[str] = None
     #Text
-    notes: str = ""
+    notes: Optional[str] = None

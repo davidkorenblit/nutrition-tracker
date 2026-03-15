@@ -221,6 +221,7 @@ function MealEntryPage() {
         hunger_during: hungerDuring,
         hunger_after: hungerAfter,
         photo_url: uploadedPhotoUrl || undefined,
+        notes: notes || undefined,
       });
 
       // Clear timer

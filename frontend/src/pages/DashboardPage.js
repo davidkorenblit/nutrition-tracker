@@ -70,7 +70,7 @@ function DashboardPage() {
 
   const location = useLocation();
 
-  const waterGoal = user?.daily_water_goal_ml || 2000;
+  const waterGoal = user?.daily_water_goal_ml || 3000;
 
   const loadData = async () => {
     try {
@@ -111,7 +111,7 @@ function DashboardPage() {
     }
   };
 
-  const completedMeals = meals.filter(m => m.plates && m.plates.length >= 1).length;
+  const completedMeals = meals.filter(m => m.is_logged).length;
 
   /* ──── Loading state ──── */
   if (loading) return <DashboardSkeleton />;
@@ -194,7 +194,7 @@ function DashboardPage() {
           <div className="space-y-3">
             {meals.map(meal => {
               const meta = mealMeta[meal.meal_type] || mealMeta.breakfast;
-              const isComplete = meal.plates && meal.plates.length >= 1;
+              const isComplete = meal.is_logged;
               return (
                 <div key={meal.id}
                   className={`flex items-center justify-between p-4 rounded-xl border bg-gradient-to-r ${meta.gradient} ${meta.border} hover:shadow-md transition-all duration-300`}

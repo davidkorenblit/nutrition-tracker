@@ -143,11 +143,12 @@ def complete_meal(
         db=db
     )
     
-    # 4. עדכן photo_url ו-notes אם סופקו
     if meal_data.photo_url:
         meal.photo_url = meal_data.photo_url
     if meal_data.notes:
         meal.notes = meal_data.notes
+        
+    meal.is_logged = True
     
     db.commit()
 

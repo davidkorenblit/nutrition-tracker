@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.database import Base
@@ -13,6 +13,7 @@ class Meal(Base):
     timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     photo_url = Column(String, nullable=True)  
     notes = Column(String, nullable=True)
+    is_logged = Column(Boolean, default=False, nullable=False)
 
     
     # קשרים

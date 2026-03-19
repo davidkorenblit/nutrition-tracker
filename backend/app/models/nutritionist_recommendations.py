@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database import Base
@@ -15,8 +16,8 @@ class NutritionistRecommendations(Base):
     visit_date = Column(String, nullable=False)  # פורמט: YYYY-MM-DD
     file_path = Column(String, nullable=False)   # נתיב לקובץ Word
     raw_text = Column(String, nullable=True)     # טקסט מלא מהקובץ
-    # JSON used for cross-database compatibility
-    recommendations = Column(JSON, nullable=False)  # רשימת המלצות: [{id, text, category, tracked, target_value, notes}, ...]
+    # PostgreSQL performs better with JSONB type
+    recommendations = Column(JSONB, nullable=False)  # רשימת המלצות: [{id, text, category, tracked, target_value, notes}, ...]
     created_at = Column(DateTime, default=datetime.utcnow)
 
     #relationship

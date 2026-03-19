@@ -89,3 +89,5 @@ def decode_access_token(token: str) -> Optional[dict]:
     except Exception as e:
         logger.error(f"Error decoding access token: {str(e)}", exc_info=True)
         return None
+    except JWTError:
+        return None

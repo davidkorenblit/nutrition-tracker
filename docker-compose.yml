@@ -10,7 +10,8 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - ./backend/.env   # NEVER committed to git — Azure uses App Service env vars
+      - path: ./backend/.env
+        required: false   # NEVER committed to git — Azure uses App Service env vars
     environment:
       - PORT=8000
       - WORKERS=3
@@ -27,7 +28,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:8000}
+        - REACT_APP_API_URL=${REACT_APP_API_URL}
     # For Azure Container Apps / ACR, swap build for:
     # image: <your-acr>.azurecr.io/nutrition-frontend:latest
     ports:

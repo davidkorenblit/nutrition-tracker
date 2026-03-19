@@ -1,5 +1,8 @@
 FROM python:3.11-slim
 
+# Install system dependencies (curl for healthcheck)
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
 # Create non-root user for security
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 

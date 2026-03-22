@@ -57,7 +57,7 @@ else:
     url_list = FRONTEND_URL.split(",")
 
 for _url in url_list:
-    _url = _url.strip()
+    _url = _url.strip().rstrip('/')
     if _url and _url not in CORS_ORIGINS:
         CORS_ORIGINS.append(_url)
 

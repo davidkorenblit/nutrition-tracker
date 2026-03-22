@@ -1,8 +1,13 @@
 import axios from 'axios';
 
+// Log the exact URL being used during initialization for debugging (e.g. if Production missed the env var)
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+console.log('API Base URL configured as:', API_BASE_URL);
+
 // יצירת instance של Axios עם הגדרות בסיס
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000',
+  baseURL: API_BASE_URL,
+  timeout: 10000, // 10 seconds timeout to prevent infinite hanging
   headers: {
     'Content-Type': 'application/json',
   },

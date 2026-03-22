@@ -34,7 +34,13 @@ function LoginPage() {
         navigate('/dashboard');
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Login failed. Please try again.');
+      console.error('Login attempt failed:', err);
+      // If no response, it's a network error or CORS issue (or our custom timeout)
+      if (!err.response) {
+        setError('Network error: Could not reach the server. Please check your connection.');
+      } else {
+        setError(err.response?.data?.detail || 'Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

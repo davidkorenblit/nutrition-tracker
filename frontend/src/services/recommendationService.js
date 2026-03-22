@@ -1,7 +1,6 @@
 import api from './api';
-import axios from 'axios';
 
-const API_URL = `${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/v1/recommendations`;
+const API_BASE = '/api/v1/recommendations';
 
 const recommendationService = {
   /**
@@ -10,20 +9,15 @@ const recommendationService = {
    */
  uploadRecommendations: async (visitDate, file) => {
   const formattedDate = new Date(visitDate).toISOString().split('T')[0];
-  
+
   const formData = new FormData();
   formData.append('file', file);
-  
-  const token = localStorage.getItem('access_token');
 
-  return axios.post(
-    `${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/v1/recommendations/upload?visit_date=${formattedDate}`,
+  // api instance already injects baseURL + Authorization header via interceptor
+  return api.post(
+    `/api/v1/recommendations/upload?visit_date=${formattedDate}`,
     formData,
-    {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    }
+    { headers: { 'Content-Type': 'multipart/form-data' } }
   ).then(r => r.data);
 },
 
@@ -31,7 +25,7 @@ const recommendationService = {
    * קבל את כל ההמלצות של המשתמש
    */
   getAllRecommendations: async (clientId = null) => {
-    let url = API_URL;
+    let url = API_BASE;
     if (clientId) url += `?client_id=${clientId}`;
     const response = await api.get(url);
     return response.data;
@@ -41,7 +35,7 @@ const recommendationService = {
    * קבל המלצה ספציפית
    */
   getRecommendation: async (id) => {
-    const response = await api.get(`${API_URL}/${id}`);
+    const response = await api.get(`${API_BASE}/${id}`);
     return response.data;
   },
 
@@ -50,7 +44,7 @@ const recommendationService = {
    */
   tagRecommendationItem: async (recommendationId, tagUpdate) => {
     const response = await api.put(
-      `${API_URL}/${recommendationId}/tag`,
+      `${API_BASE}/${recommendationId}/tag`,
       tagUpdate
     );
     return response.data;
@@ -60,7 +54,7 @@ const recommendationService = {
    * מחק המלצה
    */
   deleteRecommendation: async (id) => {
-    const response = await api.delete(`${API_URL}/${id}`);
+    const response = await api.delete(`${API_BASE}/${id}`);
     return response.data;
   },
 };

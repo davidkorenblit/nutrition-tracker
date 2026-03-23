@@ -1,17 +1,13 @@
-import smtplib
 import os
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import resend
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# הגדרות Gmail SMTP
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
-SMTP_EMAIL = os.getenv("SMTP_EMAIL")  # המייל ממנו תשלח
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")  # App Password של Gmail
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000") # כתובת הפרונטאנד
+# הגדרות Resend
+resend.api_key = os.getenv("RESEND_API_KEY")
+SENDER_EMAIL = "onboarding@resend.dev"
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://dailybite-frontend.onrender.com")
 
 
 def send_verification_email(to_email: str, verification_code: str) -> bool:
@@ -25,8 +21,8 @@ def send_verification_email(to_email: str, verification_code: str) -> bool:
     Returns:
         True אם נשלח בהצלחה, False אחרת
     """
-    if not SMTP_EMAIL or not SMTP_PASSWORD:
-        raise ValueError("SMTP_EMAIL and SMTP_PASSWORD must be set in .env file")
+    if not resend.api_key:
+        raise ValueError("RESEND_API_KEY must be set in environment variables")
     
     try:
         # יצירת תוכן המייל
@@ -54,24 +50,18 @@ def send_verification_email(to_email: str, verification_code: str) -> bool:
         </html>
         """
         
-        # יצירת הודעת MIME
-        message = MIMEMultipart("alternative")
-        message["Subject"] = subject
-        message["From"] = SMTP_EMAIL
-        message["To"] = to_email
+        # שליחת המייל דרך Resend API
+        params = {
+            "from": SENDER_EMAIL,
+            "to": [to_email],
+            "subject": subject,
+            "html": html_content,
+        }
         
-        # הוספת תוכן HTML
-        html_part = MIMEText(html_content, "html")
-        message.attach(html_part)
-        
-        # שליחת המייל
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls()  # הצפנה
-            server.login(SMTP_EMAIL, SMTP_PASSWORD)
-            server.send_message(message)
+        resend.Emails.send(params)
         
         return True
     
     except Exception as e:
-        print(f"Failed to send email: {e}")
+        print(f"Failed to send email via Resend: {e}")
         return False

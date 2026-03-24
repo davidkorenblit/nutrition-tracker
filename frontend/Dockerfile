@@ -17,8 +17,7 @@ RUN npm run build
 FROM nginx:stable-alpine
 
 COPY --from=build /app/build /usr/share/nginx/html
-REACT_APP_API_URL=https://nutrition-tracker-fptl.onrender.com
-
+# added a link a delete it 
 RUN rm /etc/nginx/conf.d/default.conf
 COPY default.conf /etc/nginx/conf.d/default.conf
 
